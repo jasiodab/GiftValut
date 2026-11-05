@@ -1,0 +1,14 @@
+node_modules/
+dist/
+client/dist/
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/uploads/*
+!data/uploads/.gitkeep
+data/backups/*
+!data/backups/.gitkeep
+.env
+*.log
+.DS_Store

@@ -1,0 +1,19 @@
+{
+  "name": "Gift Vault",
+  "short_name": "Gift Vault",
+  "description": "A private, local-first product and shopping organizer.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f2eb",
+  "theme_color": "#a14f66",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

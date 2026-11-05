@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 36 33% 97%;
+    --foreground: 30 10% 17%;
+    --card: 40 33% 99%;
+    --card-foreground: 30 10% 17%;
+    --popover: 40 33% 99%;
+    --popover-foreground: 30 10% 17%;
+    --primary: 346 35% 52%;
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 346 52% 94%;
+    --primary-deep: 346 34% 40%;
+    --secondary: 36 24% 93%;
+    --secondary-foreground: 30 9% 25%;
+    --muted: 36 22% 94%;
+    --muted-foreground: 30 7% 46%;
+    --accent: 344 46% 94%;
+    --accent-foreground: 346 34% 38%;
+    --destructive: 0 58% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 34 20% 89%;
+    --input: 34 20% 86%;
+    --ring: 346 35% 62%;
+    --success: 150 35% 40%;
+    --warning: 35 70% 46%;
+    --info: 205 25% 45%;
+    --info-soft: 205 35% 94%;
+    --radius: 0.9rem;
+  }
+
+  .dark {
+    --background: 24 12% 10%;
+    --foreground: 36 20% 92%;
+    --card: 24 10% 13%;
+    --card-foreground: 36 20% 92%;
+    --popover: 24 10% 13%;
+    --popover-foreground: 36 20% 92%;
+    --primary: 346 45% 62%;
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 346 30% 22%;
+    --primary-deep: 346 55% 72%;
+    --secondary: 24 8% 18%;
+    --secondary-foreground: 36 14% 82%;
+    --muted: 24 8% 16%;
+    --muted-foreground: 30 10% 62%;
+    --accent: 344 20% 20%;
+    --accent-foreground: 346 55% 72%;
+    --destructive: 0 58% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 24 8% 22%;
+    --input: 24 8% 20%;
+    --ring: 346 45% 68%;
+    --success: 150 35% 52%;
+    --warning: 35 70% 58%;
+    --info: 205 35% 65%;
+    --info-soft: 205 20% 22%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    min-height: 100vh;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overflow-wrap: break-word;
+  }
+
+  #root {
+    min-width: 0;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  ::selection {
+    @apply bg-primary-soft text-primary-deep;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply tracking-[-0.02em];
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-optical-sizing: auto;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+
+  .page-enter {
+    animation: fade-in 220ms ease-out;
+  }
+
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .skeleton-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.08), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
