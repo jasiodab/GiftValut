@@ -46,6 +46,16 @@ function normalizeImagePath(value: string | null | undefined): string | null {
   return `/uploads/${filename}`;
 }
 
+async function assertOwnedImage(userId: string, imagePath: string | null): Promise<string | null> {
+  if (!imagePath) return null;
+  const filename = path.basename(imagePath);
+  const upload = await prisma.upload.findFirst({ where: { filename, userId }, select: { id: true } });
+  if (!upload) {
+    throw new AppError(400, "The selected image is not available in your account.", "INVALID_IMAGE_PATH");
+  }
+  return imagePath;
+}
+
 function cleanTagNames(tags: string[] | undefined): string[] {
   if (!tags) return [];
   const seen = new Set<string>();
@@ -139,7 +149,7 @@ export async function createProduct(userId: string, input: ProductInput) {
   const category = await resolveCategory(userId, input.categoryId);
   const store = await resolveStore(userId, input.storeName, input.storeDomain, url);
   const tags = cleanTagNames(input.tags);
-  const imagePath = normalizeImagePath(input.imagePath);
+  const imagePath = await assertOwnedImage(userId, normalizeImagePath(input.imagePath));
   const price = input.currentPrice ?? null;
   const now = new Date();
 
@@ -223,7 +233,15 @@ export async function updateProduct(userId: string, id: string, input: Partial<P
     data.normalizedUrl = normalizedUrl;
   }
   if (input.description !== undefined) data.description = cleanOptional(input.description);
-  if (input.imagePath !== undefined) data.imagePath = normalizeImagePath(input.imagePath);
+  if (input.imagePath !== undefined) {
+    const nextImagePath = normalizeImagePath(input.imagePath);
+    // Only require a fresh ownership proof when the image actually changes;
+    // legacy products may reference images uploaded before Upload tracking.
+    if (nextImagePath && nextImagePath !== existing.imagePath) {
+      await assertOwnedImage(userId, nextImagePath);
+    }
+    data.imagePath = nextImagePath;
+  }
   if (input.imageSourceUrl !== undefined) data.imageSourceUrl = cleanOptional(input.imageSourceUrl);
   if (input.currency !== undefined) data.currency = input.currency;
   if (input.availability !== undefined) data.availability = cleanOptional(input.availability);
@@ -270,8 +288,12 @@ export async function updateProduct(userId: string, id: string, input: Partial<P
     data.lastCheckError = null;
   }
 
+  let previousTagIds: string[] = [];
   if (input.tags !== undefined) {
     const tags = cleanTagNames(input.tags);
+    previousTagIds = (
+      await prisma.productTag.findMany({ where: { productId: id }, select: { tagId: true } })
+    ).map((entry) => entry.tagId);
     data.tags = {
       deleteMany: {},
       create: tagCreateData(userId, tags)
@@ -305,11 +327,22 @@ export async function updateProduct(userId: string, id: string, input: Partial<P
   }
 
   if (oldImage && updated.imagePath !== oldImage) {
-    const stillUsed = await prisma.product.count({ where: { imagePath: oldImage } });
+    const [stillUsed, stillUsedAnywhere] = await Promise.all([
+      prisma.product.count({ where: { imagePath: oldImage, userId } }),
+      prisma.product.count({ where: { imagePath: oldImage } })
+    ]);
     if (!stillUsed) {
       await prisma.upload.deleteMany({ where: { filename: path.basename(oldImage), userId } });
+    }
+    if (!stillUsedAnywhere) {
       await deleteLocalImage(oldImage);
     }
+  }
+
+  if (previousTagIds.length) {
+    await prisma.tag.deleteMany({
+      where: { id: { in: previousTagIds }, userId, products: { none: {} } }
+    });
   }
 
   return serializeProduct(updated);
@@ -325,9 +358,14 @@ export async function deleteProduct(userId: string, id: string) {
   await prisma.product.delete({ where: { id } });
 
   if (product.imagePath) {
-    const stillUsed = await prisma.product.count({ where: { imagePath: product.imagePath } });
+    const [stillUsed, stillUsedAnywhere] = await Promise.all([
+      prisma.product.count({ where: { imagePath: product.imagePath, userId } }),
+      prisma.product.count({ where: { imagePath: product.imagePath } })
+    ]);
     if (!stillUsed) {
       await prisma.upload.deleteMany({ where: { filename: path.basename(product.imagePath), userId } });
+    }
+    if (!stillUsedAnywhere) {
       await deleteLocalImage(product.imagePath);
     }
   }
@@ -370,13 +408,28 @@ export async function deleteProductsBulk(userId: string, ids: string[]): Promise
   }
 
   if (imagePaths.length) {
-    const stillUsed = await prisma.product.findMany({
-      where: { imagePath: { in: imagePaths } },
-      select: { imagePath: true }
-    });
+    const [stillUsed, stillUsedAnywhere] = await Promise.all([
+      prisma.product.findMany({
+        where: { imagePath: { in: imagePaths }, userId },
+        select: { imagePath: true }
+      }),
+      prisma.product.findMany({
+        where: { imagePath: { in: imagePaths } },
+        select: { imagePath: true }
+      })
+    ]);
     const usedPaths = new Set(stillUsed.map((product) => product.imagePath).filter(Boolean));
+    const usedPathsAnywhere = new Set(
+      stillUsedAnywhere.map((product) => product.imagePath).filter(Boolean)
+    );
+    const unusedByUser = imagePaths.filter((imagePath) => !usedPaths.has(imagePath));
+    if (unusedByUser.length) {
+      await prisma.upload.deleteMany({
+        where: { userId, filename: { in: unusedByUser.map((imagePath) => path.basename(imagePath)) } }
+      });
+    }
     for (const imagePath of imagePaths) {
-      if (!usedPaths.has(imagePath)) {
+      if (!usedPathsAnywhere.has(imagePath)) {
         await deleteLocalImage(imagePath);
       }
     }

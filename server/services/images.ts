@@ -53,7 +53,7 @@ export async function saveImageBuffer(
     throw new Error("The image file is empty.");
   }
   if (buffer.length > MAX_IMAGE_BYTES) {
-    throw new Error("The image is larger than the 8 MB limit.");
+    throw new Error("The image is larger than the 2 MB limit.");
   }
 
   const detected = detectImage(buffer);
