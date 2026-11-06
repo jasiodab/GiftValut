@@ -2,6 +2,19 @@
 
 type CacheEntry<T> = { value: T; expiresAt: number };
 const store = new Map<string, CacheEntry<any>>();
+const MAX_ENTRIES = 500;
+
+function makeRoom(now: number) {
+  if (store.size < MAX_ENTRIES) return;
+  for (const [key, entry] of store) {
+    if (entry.expiresAt <= now) store.delete(key);
+  }
+  while (store.size >= MAX_ENTRIES) {
+    const oldestKey = store.keys().next().value;
+    if (!oldestKey) break;
+    store.delete(oldestKey);
+  }
+}
 
 export const priceCache = {
   get<T>(key: string): T | null {
@@ -11,7 +24,10 @@ export const priceCache = {
     return e.value as T;
   },
   set<T>(key: string, value: T, ttlSeconds?: number) {
-    store.set(key, { value, expiresAt: Date.now() + (ttlSeconds ?? pricingConfig.cacheTtlSeconds) * 1000 });
+    const now = Date.now();
+    makeRoom(now);
+    store.delete(key);
+    store.set(key, { value, expiresAt: now + (ttlSeconds ?? pricingConfig.cacheTtlSeconds) * 1000 });
   },
   delete(key: string) { store.delete(key); },
   clear() { store.clear(); }

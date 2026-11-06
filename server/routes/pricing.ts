@@ -37,10 +37,14 @@ pricingRouter.get("/products/:productId/history", asyncHandler(async (req, res) 
   const { productId } = idParam.parse(req.params);
   const product = await prisma.product.findFirst({ where: { id: productId, userId }, select: { id: true } });
   if (!product) throw new AppError(404, "Product not found", "PRODUCT_NOT_FOUND");
+  // Keep only the most recent snapshots per offer to bound payload size.
   const offers = await prisma.priceOffer.findMany({
-    where: { productId, userId }, include: { snapshots: { orderBy: { observedAt: "asc" } } }
+    where: { productId, userId },
+    include: { snapshots: { orderBy: { observedAt: "desc" }, take: 200 } }
   });
-  res.json({ offers });
+  res.json({
+    offers: offers.map((offer) => ({ ...offer, snapshots: [...offer.snapshots].reverse() }))
+  });
 }));
 
 pricingRouter.get("/products/:productId/best-price", asyncHandler(async (req, res) => {
