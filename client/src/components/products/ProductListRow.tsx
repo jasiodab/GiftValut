@@ -2,8 +2,7 @@ import { Link } from "react-router-dom";
 import { ExternalLink, Heart } from "lucide-react";
 import { ProductImage } from "./ProductImage";
 import { StatusBadge } from "./StatusBadge";
-import { PriceChange } from "./PriceChange";
-import { formatMoney, timeAgo } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useToggleFavorite } from "@/hooks/useProductActions";
@@ -82,15 +81,11 @@ export function ProductListRow({ product, selectable, selected, onSelectedChange
       </div>
 
       <div className="hidden text-[11px] text-muted-foreground xl:block">
-        <div>{product.availability ?? "No availability"}</div>
-        <div className="mt-0.5">Updated {timeAgo(product.lastPriceCheckAt)}</div>
+        {product.availability ?? "No availability"}
       </div>
 
       <div className="text-right">
         <div className="text-sm font-semibold">{formatMoney(product.currentPrice, product.currency)}</div>
-        <div className="mt-1">
-          <PriceChange change={product.priceChange} percent={product.priceChangePercent} />
-        </div>
       </div>
 
       <div className="z-20 hidden items-center justify-end sm:flex">

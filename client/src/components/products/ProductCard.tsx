@@ -3,8 +3,7 @@ import { ExternalLink, Heart, ImageOff } from "lucide-react";
 import { ProductImage } from "./ProductImage";
 import { StatusBadge } from "./StatusBadge";
 import { AvailabilityBadge } from "./AvailabilityBadge";
-import { PriceChange } from "./PriceChange";
-import { formatMoney, timeAgo } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/lib/types";
 import { useToggleFavorite } from "@/hooks/useProductActions";
@@ -104,22 +103,16 @@ export function ProductCard({ product, selectable, selected, onSelectedChange, c
                 </span>
               ) : null}
             </div>
-            <div className="mt-1 flex items-center gap-1.5">
-              <PriceChange
-                change={product.priceChange}
-                percent={product.priceChangePercent}
-                currency={product.currency}
-              />
-              {product.discountPercent ? (
+            {product.discountPercent ? (
+              <div className="mt-1">
                 <span className="rounded-full bg-success/10 px-1.5 py-0.5 text-[10px] font-semibold text-success">
                   -{product.discountPercent}%
                 </span>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </div>
           <div className="flex flex-col items-end gap-1">
             <StatusBadge status={product.status} />
-            <span className="text-[10px] text-muted-foreground">{timeAgo(product.lastPriceCheckAt)}</span>
           </div>
         </div>
 

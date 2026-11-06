@@ -10,7 +10,6 @@ import {
   Link2,
   Loader2,
   Plus,
-  RefreshCw,
   Sparkles,
   Upload,
   Wand2,
@@ -43,7 +42,6 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { ProductImage } from "./ProductImage";
 
 type ProductFormDialogProps = {
@@ -67,7 +65,6 @@ type FormState = {
   status: ProductStatus;
   categoryId: string;
   notes: string;
-  autoTrack: boolean;
   storeName: string;
   storeDomain: string;
   groupId: string;
@@ -87,7 +84,6 @@ const emptyForm = (currency: string): FormState => ({
   status: "TO_CONSIDER",
   categoryId: "",
   notes: "",
-  autoTrack: true,
   storeName: "",
   storeDomain: "",
   groupId: "",
@@ -108,7 +104,6 @@ function formFromProduct(product: Product): FormState {
     status: product.status,
     categoryId: product.category?.id ?? "",
     notes: product.notes ?? "",
-    autoTrack: product.autoTrack,
     storeName: product.store?.name ?? "",
     storeDomain: product.store?.domain ?? "",
     groupId: product.group?.id ?? "",
@@ -383,7 +378,6 @@ export function ProductFormDialog({
       status: form.status,
       categoryId: form.categoryId,
       notes: form.notes.trim() || null,
-      autoTrack: form.autoTrack,
       storeName: form.storeName.trim() || null,
       storeDomain: form.storeDomain.trim() || null,
       groupId: form.groupId || null,
@@ -416,7 +410,7 @@ export function ProductFormDialog({
           <DialogTitle>{isEditing ? "Edit product details" : "Add to your vault"}</DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update the details, pricing or tracking for this product."
+              ? "Update the details and pricing for this product."
               : "Paste a store link and we’ll try to fill in the details. You stay in control of what is saved."}
           </DialogDescription>
         </DialogHeader>
@@ -811,16 +805,6 @@ export function ProductFormDialog({
                         ))}
                       </div>
                     ) : null}
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2.5">
-                    <div>
-                      <p className="text-xs font-medium">Automatic price tracking</p>
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">
-                        Periodically check this product at the interval set in Settings.
-                      </p>
-                    </div>
-                    <Switch checked={form.autoTrack} onCheckedChange={(checked) => update("autoTrack", checked)} />
                   </div>
 
                   <div className="mt-4 space-y-1.5">

@@ -9,7 +9,6 @@ import {
   Info,
   Loader2,
   PackageCheck,
-  RefreshCw,
   RotateCcw,
   Save,
   Settings2,
@@ -23,8 +22,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
@@ -37,7 +34,7 @@ import {
 import { api, downloadBackup, downloadNamedBackup } from "@/lib/api";
 import { useSettings } from "@/lib/queries";
 import { invalidateVaultData } from "@/lib/invalidate";
-import { CURRENCIES, TRACKING_INTERVALS } from "@/lib/constants";
+import { CURRENCIES } from "@/lib/constants";
 import { formatBytes, formatDateTime, timeAgo } from "@/lib/format";
 import { parsePriceString } from "@/lib/parse";
 import type { BackupFile } from "@/lib/types";
@@ -50,8 +47,6 @@ export function SettingsPage() {
   const [currency, setCurrency] = useState("PLN");
   const [defaultView, setDefaultView] = useState<"grid" | "list">("grid");
   const [budgetDraft, setBudgetDraft] = useState("");
-  const [autoTracking, setAutoTracking] = useState(true);
-  const [intervalMinutes, setIntervalMinutes] = useState(360);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
@@ -63,25 +58,13 @@ export function SettingsPage() {
     setCurrency(data.settings.currency);
     setDefaultView(data.settings.defaultProductView);
     setBudgetDraft(data.settings.budget !== null ? String(data.settings.budget) : "");
-    setAutoTracking(data.settings.autoTrackingEnabled);
-    setIntervalMinutes(data.settings.priceUpdateIntervalMinutes);
-  }, [data?.settings.id, data?.settings.currency, data?.settings.defaultProductView, data?.settings.budget, data?.settings.autoTrackingEnabled, data?.settings.priceUpdateIntervalMinutes]);
+  }, [data?.settings.id, data?.settings.currency, data?.settings.defaultProductView, data?.settings.budget]);
 
   const preferencesMutation = useMutation({
     mutationFn: (body: { currency: string; defaultProductView: "grid" | "list"; budget: number | null }) =>
       api.updateSettings(body),
     onSuccess: async () => {
       toast.success("Preferences saved");
-      await invalidateVaultData(queryClient);
-    },
-    onError: (error: Error) => toast.error(error.message)
-  });
-
-  const trackingMutation = useMutation({
-    mutationFn: (body: { autoTrackingEnabled: boolean; priceUpdateIntervalMinutes: number }) =>
-      api.updateSettings(body),
-    onSuccess: async () => {
-      toast.success("Tracking settings saved");
       await invalidateVaultData(queryClient);
     },
     onError: (error: Error) => toast.error(error.message)
@@ -245,60 +228,6 @@ export function SettingsPage() {
               </div>
             </Card>
 
-            <Card>
-              <SettingsHeading
-                icon={RefreshCw}
-                title="Price tracking"
-                description="Control automatic checks and how often they run."
-              />
-              <div className="space-y-5 p-5">
-                <div className="flex items-center justify-between gap-4 rounded-lg border border-border/80 bg-card px-4 py-3">
-                  <div>
-                    <p className="text-xs font-medium">Automatic price tracking</p>
-                    <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">
-                      The scheduler checks due products in small batches. Failed checks never overwrite a valid price.
-                    </p>
-                  </div>
-                  <Switch checked={autoTracking} onCheckedChange={setAutoTracking} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Check interval</Label>
-                  <Select
-                    value={String(intervalMinutes)}
-                    onValueChange={(value) => setIntervalMinutes(Number(value))}
-                    disabled={!autoTracking}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TRACKING_INTERVALS.map((interval) => (
-                        <SelectItem key={interval.value} value={String(interval.value)}>
-                          {interval.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[10px] text-muted-foreground">
-                    Individual products can opt out from their edit form.
-                  </p>
-                </div>
-                <div className="flex justify-end">
-                  <Button
-                    onClick={() =>
-                      trackingMutation.mutate({
-                        autoTrackingEnabled: autoTracking,
-                        priceUpdateIntervalMinutes: intervalMinutes
-                      })
-                    }
-                    loading={trackingMutation.isPending}
-                  >
-                    <Save className="h-4 w-4" /> Save tracking
-                  </Button>
-                </div>
-              </div>
-            </Card>
-
             {data.isOwner ? <Card>
               <SettingsHeading icon={ShieldCheck} title="Invite an account" description="Each person gets a separate private collection." />
               <div className="space-y-3 p-5">
@@ -437,7 +366,6 @@ export function SettingsPage() {
                   <CountFact label="Products" value={database?.counts.products ?? 0} />
                   <CountFact label="Categories" value={database?.counts.categories ?? 0} />
                   <CountFact label="Stores" value={database?.counts.stores ?? 0} />
-                  <CountFact label="Price records" value={database?.counts.priceHistory ?? 0} />
                   <CountFact label="Groups" value={database?.counts.groups ?? 0} />
                   <CountFact label="Tags" value={database?.counts.tags ?? 0} />
                 </div>
@@ -457,7 +385,7 @@ export function SettingsPage() {
                     <span className="text-[11px] font-medium">Your collection is private</span>
                   </div>
                   <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">
-                    Your products, categories, groups, settings, price records and images are kept separate from other accounts.
+                    Your products, categories, groups, settings and images are kept separate from other accounts.
                   </p>
                 </div>
               </div>

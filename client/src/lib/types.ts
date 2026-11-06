@@ -35,21 +35,12 @@ export type Product = {
   availability: Availability;
   status: ProductStatus;
   notes: string | null;
-  autoTrack: boolean;
   store: StoreRef | null;
   category: CategoryRef | null;
   group: GroupRef | null;
   tags: string[];
-  lastCheckedAt: string | null;
-  lastCheckStatus: "NEVER" | "SUCCESS" | "FAILED" | string;
-  lastCheckError: string | null;
-  lastPriceCheckAt: string | null;
   createdAt: string;
   updatedAt: string;
-  previousPrice: number | null;
-  priceChange: number | null;
-  priceChangePercent: number | null;
-  isPriceDrop: boolean;
   discountPercent: number | null;
 };
 
@@ -68,27 +59,6 @@ export type Tag = {
   count: number;
 };
 
-export type PriceHistoryEntry = {
-  id: string;
-  productId: string;
-  price: number;
-  originalPrice: number | null;
-  currency: string;
-  availability: string | null;
-  source: "AUTOMATIC" | "MANUAL" | string;
-  recordedAt: string;
-};
-
-export type PriceStats = {
-  lowest: number | null;
-  highest: number | null;
-  average: number | null;
-  previous: number | null;
-  difference: number | null;
-  percentChange: number | null;
-  entries: number;
-};
-
 export type GroupOffer = {
   id: string;
   name: string;
@@ -98,15 +68,12 @@ export type GroupOffer = {
   currency: string;
   availability: string | null;
   imageUrl: string | null;
-  lastPriceCheckAt: string | null;
   store: StoreRef | null;
   status: ProductStatus;
 };
 
 export type ProductDetailResponse = {
   product: Product;
-  priceHistory: PriceHistoryEntry[];
-  priceStats: PriceStats;
   groupOffers: GroupOffer[];
 };
 
@@ -144,13 +111,10 @@ export type DashboardData = {
     purchased: number;
     totalValue: number;
     stores: number;
-    autoTracked: number;
     withPrice: number;
   };
   recentlyAdded: Product[];
   favorites: Product[];
-  priceDrops: Product[];
-  recentPriceUpdates: Product[];
   categorySummary: Array<{ id: string; name: string; color: string; count: number }>;
   budget: {
     budget: number | null;
@@ -192,8 +156,6 @@ export type BudgetSummary = {
 export type Settings = {
   id: number;
   currency: string;
-  autoTrackingEnabled: boolean;
-  priceUpdateIntervalMinutes: number;
   defaultProductView: "grid" | "list";
   budget: number | null;
   lastBackupAt: string | null;
@@ -219,7 +181,6 @@ export type SettingsResponse = {
       products: number;
       categories: number;
       stores: number;
-      priceHistory: number;
       groups: number;
       tags: number;
     };
@@ -262,7 +223,6 @@ export type AppMeta = {
   productCount: number;
   status: "ok" | "degraded";
   database: "connected" | "error";
-  autoTracking: boolean;
   lastBackupAt: string | null;
 };
 
@@ -278,7 +238,6 @@ export type ProductInput = {
   availability: string | null;
   status: ProductStatus;
   notes: string | null;
-  autoTrack: boolean;
   storeName: string | null;
   storeDomain: string | null;
   categoryId: string;

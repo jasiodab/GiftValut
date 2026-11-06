@@ -10,7 +10,6 @@ import {
   Plus,
   ShoppingBag,
   Sparkles,
-  TrendingDown,
   Wallet
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -20,7 +19,6 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ProductImage } from "@/components/products/ProductImage";
-import { PriceChange } from "@/components/products/PriceChange";
 import { StatusBadge } from "@/components/products/StatusBadge";
 import { useDashboard, useMeta } from "@/lib/queries";
 import { useQuickAdd } from "@/contexts/QuickAddContext";
@@ -256,7 +254,7 @@ export function DashboardPage() {
           </section>
 
           <section className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-            <Card className="xl:col-span-4">
+            <Card className="xl:col-span-12">
               <SectionHeading
                 title="Favorites"
                 subtitle="The ideas you keep coming back to"
@@ -275,107 +273,6 @@ export function DashboardPage() {
                     icon={Heart}
                     title="No favorites yet"
                     description="Tap the heart on a product to keep it close."
-                    compact
-                  />
-                </div>
-              )}
-            </Card>
-
-            <Card className="xl:col-span-4">
-              <SectionHeading
-                title="Price drops"
-                subtitle="Recent movement worth a closer look"
-                href="/products?sort=updated"
-                icon={TrendingDown}
-              />
-              {data.priceDrops.length ? (
-                <div className="divide-y divide-border/70 px-2 pb-2">
-                  {data.priceDrops.map((product) => (
-                    <Link
-                      key={product.id}
-                      to={`/products/${product.id}`}
-                      className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-secondary/60"
-                    >
-                      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border/60">
-                        <ProductImage src={product.imageUrl} alt={product.name} iconClassName="h-3.5 w-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium">{product.name}</p>
-                        <div className="mt-1 flex items-center gap-2">
-                          <span className="text-xs font-semibold">
-                            {formatMoney(product.currentPrice, product.currency)}
-                          </span>
-                          <PriceChange
-                            change={product.priceChange}
-                            percent={product.priceChangePercent}
-                            className="text-[10px]"
-                          />
-                        </div>
-                      </div>
-                      <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
-                        Drop
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="px-4 pb-4">
-                  <EmptyState
-                    icon={TrendingDown}
-                    title="No price drops yet"
-                    description="Price history will reveal drops after a few checks."
-                    compact
-                  />
-                </div>
-              )}
-            </Card>
-
-            <Card className="xl:col-span-4">
-              <SectionHeading
-                title="Recent price checks"
-                subtitle="The latest tracking activity"
-                href="/products?sort=updated"
-                icon={Sparkles}
-              />
-              {data.recentPriceUpdates.length ? (
-                <div className="divide-y divide-border/70 px-2 pb-2">
-                  {data.recentPriceUpdates.map((product) => (
-                    <Link
-                      key={product.id}
-                      to={`/products/${product.id}`}
-                      className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-secondary/60"
-                    >
-                      <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                          product.lastCheckStatus === "FAILED"
-                            ? "bg-destructive/10 text-destructive"
-                            : "bg-success/10 text-success"
-                        }`}
-                      >
-                        {product.lastCheckStatus === "FAILED" ? (
-                          <ArrowUpRight className="h-3.5 w-3.5" />
-                        ) : (
-                          <Check className="h-3.5 w-3.5" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium">{product.name}</p>
-                        <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                          {product.store?.name ?? "Store"} · {timeAgo(product.lastCheckedAt)}
-                        </p>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">
-                        {product.lastCheckStatus === "FAILED" ? "Failed" : "Success"}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="px-4 pb-4">
-                  <EmptyState
-                    icon={Sparkles}
-                    title="No checks yet"
-                    description="Automatic tracking records activity here."
                     compact
                   />
                 </div>
@@ -439,7 +336,6 @@ export function DashboardPage() {
               </div>
               <div className="grid grid-cols-2 gap-px overflow-hidden rounded-b-xl bg-border/70">
                 <VaultFact label="Stores" value={String(data.stats.stores)} />
-                <VaultFact label="Tracked" value={String(data.stats.autoTracked)} />
                 <VaultFact label="With prices" value={String(data.stats.withPrice)} />
                 <VaultFact label="Purchased value" value={formatCompactMoney(data.budget.purchasedTotal, data.currency)} />
               </div>

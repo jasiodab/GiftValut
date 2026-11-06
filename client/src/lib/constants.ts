@@ -64,18 +64,6 @@ export const STATUS_OPTIONS = (Object.keys(STATUS_META) as ProductStatus[]).map(
 
 export const CURRENCIES = ["PLN", "EUR", "USD", "GBP", "CHF", "CZK", "SEK", "NOK", "DKK", "HUF", "UAH"];
 
-export const TRACKING_INTERVALS = [
-  { value: 15, label: "Every 15 minutes" },
-  { value: 30, label: "Every 30 minutes" },
-  { value: 60, label: "Every hour" },
-  { value: 180, label: "Every 3 hours" },
-  { value: 360, label: "Every 6 hours" },
-  { value: 720, label: "Every 12 hours" },
-  { value: 1440, label: "Once a day" },
-  { value: 4320, label: "Every 3 days" },
-  { value: 10080, label: "Once a week" }
-];
-
 export const SORT_OPTIONS = [
   { value: "recent", label: "Recently added" },
   { value: "updated", label: "Recently updated" },

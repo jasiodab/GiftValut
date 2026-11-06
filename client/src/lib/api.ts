@@ -131,21 +131,6 @@ export const api = {
     request<{ duplicate: { id: string; name: string; createdAt: string } | null }>(
       `/products/check-url${buildQuery({ url })}`
     ),
-  refreshPrice: (id: string) =>
-    request<{
-      success: boolean;
-      message: string;
-      warnings: string[];
-      product: Product;
-    }>(`/products/${id}/refresh`, { method: "POST" }),
-  addManualPrice: (
-    id: string,
-    body: { price: number; originalPrice?: number | null; availability?: string | null; currency?: string }
-  ) =>
-    request<{ product: Product; message: string }>(`/products/${id}/price`, {
-      method: "POST",
-      body
-    }),
 
   categories: (signal?: AbortSignal) => request<{ categories: Category[] }>("/categories", { signal }),
   createCategory: (body: { name: string; color: string; icon: string }) =>
@@ -173,7 +158,7 @@ export const api = {
     request<ExtractionResult>("/extract", { method: "POST", body: { url }, signal }),
 
   settings: (signal?: AbortSignal) => request<SettingsResponse>("/settings", { signal }),
-  updateSettings: (body: Partial<Pick<Settings, "currency" | "autoTrackingEnabled" | "priceUpdateIntervalMinutes" | "defaultProductView" | "budget">>) =>
+  updateSettings: (body: Partial<Pick<Settings, "currency" | "defaultProductView" | "budget">>) =>
     request<{ settings: Settings }>("/settings", { method: "PATCH", body }),
   restoreBackup: (file: File) => {
     const formData = new FormData();
@@ -192,17 +177,6 @@ export const api = {
     });
   },
 
-  pricingProviders: (signal?: AbortSignal) => request<{ providers: { provider: string; configured: boolean; message: string }[] }>("/pricing/providers", { signal }),
-  searchPrices: (productId: string, force = false) =>
-    request<{ checkId: string; offers: any[]; providerRuns: any[]; cached: boolean }>(
-      "/pricing/products/" + productId + "/search" + (force ? "?force=true" : ""),
-      { method: "POST" }
-    ),
-  priceOffers: (productId: string, signal?: AbortSignal) => request<{ offers: any[] }>("/pricing/products/" + productId + "/offers", { signal }),
-  priceHistory: (productId: string, signal?: AbortSignal) => request<{ offers: any[] }>("/pricing/products/" + productId + "/history", { signal }),
-  bestPrice: (productId: string, signal?: AbortSignal) => request<{ offer: any }>("/pricing/products/" + productId + "/best-price", { signal }),
-  confirmOffer: (offerId: string) => request<{ offer: any }>("/pricing/offers/" + offerId + "/confirm", { method: "POST" }),
-  rejectOffer: (offerId: string) => request<{ offer: any }>("/pricing/offers/" + offerId + "/reject", { method: "POST" }),
   authMe: () => request<{ user: any }>("/auth/me"),
   authLogin: (body: { username: string; password: string }) => request<{ user: any }>("/auth/login", { method: "POST", body }),
   authLogout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),

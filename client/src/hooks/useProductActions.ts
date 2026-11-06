@@ -19,27 +19,6 @@ export function useToggleFavorite() {
   });
 }
 
-export function useRefreshPrice() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => api.refreshPrice(id),
-    onSuccess: async (result, id) => {
-      if (result.success) {
-        toast.success(result.message);
-      } else {
-        toast.warning("Price check failed", {
-          description: `${result.message} Your previous price was kept.`
-        });
-      }
-      await invalidateVaultData(queryClient, id);
-    },
-    onError: (error: Error, id) => {
-      toast.error("Price check failed", { description: error.message });
-      void invalidateVaultData(queryClient, id);
-    }
-  });
-}
-
 export function useDeleteProduct() {
   const queryClient = useQueryClient();
   return useMutation({
