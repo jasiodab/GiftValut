@@ -65,6 +65,29 @@ try:
     db.execute('CREATE UNIQUE INDEX IF NOT EXISTS "Upload_filename_userId_key" ON "Upload" ("filename", "userId")')
     db.execute('CREATE INDEX IF NOT EXISTS "Upload_userId_idx" ON "Upload" ("userId")')
 
+    # Backfill ownership for images that predate the Upload table so existing
+    # product images remain readable after the migration. Older databases without
+    # a Product.userId column are handled later by migrate-tenancy.
+    try:
+        owner_row = db.execute(
+            'SELECT "id" FROM "User" WHERE "role" = \'OWNER\' ORDER BY "createdAt" LIMIT 1'
+        ).fetchone()
+        owner_id = owner_row[0] if owner_row else None
+        for image_path, user_id in db.execute(
+            'SELECT DISTINCT "imagePath", "userId" FROM "Product" WHERE "imagePath" IS NOT NULL'
+        ):
+            filename = os.path.basename(image_path)
+            effective_user = user_id or owner_id
+            if not filename or not effective_user:
+                continue
+            db.execute(
+                'INSERT OR IGNORE INTO "Upload" ("id", "filename", "userId") '
+                "VALUES (lower(hex(randomblob(12))), ?, ?)",
+                (filename, effective_user),
+            )
+    except sqlite3.OperationalError:
+        pass
+
     db.execute('CREATE UNIQUE INDEX IF NOT EXISTS "Product_userId_url_key" ON "Product" ("userId", "url")')
     db.execute('CREATE UNIQUE INDEX IF NOT EXISTS "Product_userId_normalizedUrl_key" ON "Product" ("userId", "normalizedUrl")')
     db.execute('CREATE UNIQUE INDEX IF NOT EXISTS "Category_userId_name_key" ON "Category" ("userId", "name")')
