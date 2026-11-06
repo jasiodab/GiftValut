@@ -5,11 +5,11 @@ export const googleShoppingProvider: PriceProvider = {
   name: "GOOGLE_SHOPPING",
   isConfigured: () => Boolean(pricingConfig.searchApiApiKey),
   configurationMessage: () => "Set SEARCHAPI_API_KEY to enable Google Shopping results.",
-  async search(_query, product) {
+  async search(_query, product, options) {
     if (!this.isConfigured()) return [];
     const q = product.ean || product.name;
     const url = `https://www.searchapi.io/api/v1/search?engine=google_shopping&q=${encodeURIComponent(q)}&api_key=${encodeURIComponent(pricingConfig.searchApiApiKey)}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: options?.signal });
     if (!res.ok) throw new Error(`Google Shopping search failed: ${res.status}`);
     const json = (await res.json()) as any;
     const items = json?.shopping_results ?? json?.results ?? [];

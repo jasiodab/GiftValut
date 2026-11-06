@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma";
+import { AppError } from "../lib/errors";
 import { providers } from "./providers";
 import { priceCache } from "./cache";
 import { scoreOffer, classifyScore } from "./matcher";
@@ -14,7 +15,7 @@ export type SearchOutcome = {
 
 export async function searchProductPrices(userId: string, productId: string, force = false): Promise<SearchOutcome> {
   const product = await prisma.product.findFirst({ where: { id: productId, userId } });
-  if (!product) throw new Error("Product not found");
+  if (!product) throw new AppError(404, "Product not found.", "PRODUCT_NOT_FOUND");
 
   const cacheKey = `price:${userId}:${productId}`;
   if (!force) {
@@ -45,24 +46,32 @@ export async function searchProductPrices(userId: string, productId: string, for
       runs.push({ ...run, status: "SKIPPED", errorMessage: provider.configurationMessage() });
       return;
     }
+    let controller: AbortController | null = null;
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), pricingConfig.searchTimeoutMs);
-      const offers = await provider.search(query, productInput);
-      clearTimeout(timer);
-      for (const o of offers) {
-        const score = scoreOffer(productInput, o);
-        const status = classifyScore(score);
-        if (status === "REJECT") continue;
-        allOffers.push({ offer: o, score, status });
+      controller = new AbortController();
+      const timer = setTimeout(() => controller?.abort(), pricingConfig.searchTimeoutMs);
+      try {
+        const offers = await provider.search(query, productInput, { signal: controller.signal });
+        for (const o of offers) {
+          const score = scoreOffer(productInput, o);
+          const status = classifyScore(score);
+          if (status === "REJECT") continue;
+          allOffers.push({ offer: o, score, status });
+        }
+        await prisma.priceProviderRun.update({
+          where: { id: run.id },
+          data: { status: "SUCCESS", resultsCount: offers.length, finishedAt: new Date() }
+        });
+        runs.push({ ...run, status: "SUCCESS", resultsCount: offers.length });
+      } finally {
+        clearTimeout(timer);
       }
-      await prisma.priceProviderRun.update({
-        where: { id: run.id },
-        data: { status: "SUCCESS", resultsCount: offers.length, finishedAt: new Date() }
-      });
-      runs.push({ ...run, status: "SUCCESS", resultsCount: offers.length });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
+      const msg = controller?.signal.aborted
+        ? "Provider request timed out."
+        : err instanceof Error
+          ? err.message
+          : "Unknown error";
       await prisma.priceProviderRun.update({
         where: { id: run.id },
         data: { status: "FAILED", errorMessage: msg, finishedAt: new Date(), resultsCount: 0 }

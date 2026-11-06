@@ -19,10 +19,18 @@ export type NormalizedOffer = {
   fetchedAt: string;
 };
 
+export type PriceSearchOptions = {
+  signal?: AbortSignal;
+};
+
 export type PriceProvider = {
   name: ProviderName;
   isConfigured: () => boolean;
-  search: (query: string, product: { name: string; brand?: string | null; model?: string | null; ean?: string | null }) => Promise<NormalizedOffer[]>;
+  search: (
+    query: string,
+    product: { name: string; brand?: string | null; model?: string | null; ean?: string | null },
+    options?: PriceSearchOptions
+  ) => Promise<NormalizedOffer[]>;
   configurationMessage: () => string;
 };
 

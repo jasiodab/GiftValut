@@ -5,7 +5,7 @@ export const amazonProvider: PriceProvider = {
   name: "AMAZON",
   isConfigured: () => Boolean(pricingConfig.amazonAccessKey && pricingConfig.amazonSecretKey && pricingConfig.amazonPartnerTag),
   configurationMessage: () => "Amazon Creators API access (AMAZON_ACCESS_KEY, AMAZON_SECRET_KEY, AMAZON_PARTNER_TAG) is required and must be approved by Amazon.",
-  async search(_query, product) {
+  async search(_query, product, options) {
     if (!this.isConfigured()) return [];
     // Amazon Creators API requires signed requests; availability depends on account approval.
     // We perform a guarded call and surface failures to the orchestrator.
@@ -24,7 +24,8 @@ export const amazonProvider: PriceProvider = {
         "X-Amz-Target": "com.amazon.paapi5.v1.ProductAdvertisingAPIv1.SearchItems",
         "AssociateTag": pricingConfig.amazonPartnerTag
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: options?.signal
     });
     if (!res.ok) throw new Error(`Amazon search failed: ${res.status}`);
     const json = (await res.json()) as any;

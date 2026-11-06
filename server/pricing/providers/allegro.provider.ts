@@ -3,12 +3,13 @@ import type { PriceProvider, NormalizedOffer } from "./types";
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
-async function getToken(): Promise<string> {
+async function getToken(signal?: AbortSignal): Promise<string> {
   if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.token;
   const basic = Buffer.from(`${pricingConfig.allegroClientId}:${pricingConfig.allegroClientSecret}`).toString("base64");
   const res = await fetch("https://allegro.pl/auth/oauth/token?grant_type=client_credentials", {
     method: "POST",
-    headers: { Authorization: `Basic ${basic}` }
+    headers: { Authorization: `Basic ${basic}` },
+    signal
   });
   if (!res.ok) throw new Error(`Allegro auth failed: ${res.status}`);
   const json = (await res.json()) as { access_token: string; expires_in: number };
@@ -20,13 +21,14 @@ export const allegroProvider: PriceProvider = {
   name: "ALLEGRO",
   isConfigured: () => Boolean(pricingConfig.allegroClientId && pricingConfig.allegroClientSecret),
   configurationMessage: () => "Set ALLEGRO_CLIENT_ID and ALLEGRO_CLIENT_SECRET to enable Allegro.",
-  async search(_query, product) {
+  async search(_query, product, options) {
     if (!this.isConfigured()) return [];
-    const token = await getToken();
+    const token = await getToken(options?.signal);
     const q = product.ean || product.name;
     const url = `https://api.allegro.pl/offers/listing?phrase=${encodeURIComponent(q)}&limit=20&sort=price_asc`;
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.allegro.public.v1+json" }
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.allegro.public.v1+json" },
+      signal: options?.signal
     });
     if (!res.ok) throw new Error(`Allegro search failed: ${res.status}`);
     const json = (await res.json()) as any;

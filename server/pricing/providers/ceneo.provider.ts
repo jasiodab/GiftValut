@@ -5,12 +5,12 @@ export const ceneoProvider: PriceProvider = {
   name: "CENEO",
   isConfigured: () => Boolean(pricingConfig.ceneoApiKey),
   configurationMessage: () => "Set CENEO_API_KEY to enable Ceneo.",
-  async search(_query, product) {
+  async search(_query, product, options) {
     if (!this.isConfigured()) return [];
     const q = product.ean || product.name;
     const base = pricingConfig.ceneoApiUrl.replace(/\/$/, "");
     const url = `${base}/Search?apiKey=${encodeURIComponent(pricingConfig.ceneoApiKey)}&phrase=${encodeURIComponent(q)}`;
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    const res = await fetch(url, { headers: { Accept: "application/json" }, signal: options?.signal });
     if (!res.ok) throw new Error(`Ceneo search failed: ${res.status}`);
     const json = (await res.json()) as any;
     const items = Array.isArray(json) ? json : json?.products ?? json?.offers ?? [];
