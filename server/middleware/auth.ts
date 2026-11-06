@@ -3,7 +3,8 @@ import { cleanupExpiredSessions, getSessionUser } from "../lib/auth";
 
 export async function authMiddleware(req: Request, _res: Response, next: NextFunction) {
   // Avoid SQLite session lookups for static assets and health checks.
-  const requestPath = req.path || req.url || "";
+  // Use originalUrl because req.path is relative to the current router mount.
+  const requestPath = (req.originalUrl || req.url || "").split("?")[0];
   if ((!requestPath.startsWith("/api") && !requestPath.startsWith("/uploads/")) || requestPath === "/api/health") {
     (req as any).user = null;
     return next();
