@@ -1,8 +1,6 @@
 import { prisma } from "../lib/prisma";
 import { serializeProduct } from "../lib/serialize";
 
-type BudgetProduct = Awaited<ReturnType<typeof loadProducts>>[number];
-
 async function loadProducts(userId: string) {
   return prisma.product.findMany({
     where: { userId },
@@ -16,9 +14,11 @@ async function loadProducts(userId: string) {
   });
 }
 
-function dedupeGroupedOffers(products: BudgetProduct[]): BudgetProduct[] {
-  const ungrouped: BudgetProduct[] = [];
-  const grouped = new Map<string, BudgetProduct>();
+function dedupeGroupedOffers<T extends { groupId: string | null; currentPrice: number | null }>(
+  products: T[]
+): T[] {
+  const ungrouped: T[] = [];
+  const grouped = new Map<string, T>();
 
   for (const product of products) {
     if (!product.groupId) {
@@ -34,6 +34,61 @@ function dedupeGroupedOffers(products: BudgetProduct[]): BudgetProduct[] {
   }
 
   return [...ungrouped, ...grouped.values()];
+}
+
+function summarizeBudget(
+  currency: string,
+  budget: number | null,
+  savedValue: number,
+  plannedTotal: number,
+  purchasedTotal: number
+) {
+  const committed = plannedTotal + purchasedTotal;
+  const remaining = budget === null ? null : Math.round((budget - committed) * 100) / 100;
+  const progress =
+    budget !== null && budget > 0 ? Math.round(Math.min(100, (committed / budget) * 100) * 10) / 10 : 0;
+  return {
+    currency,
+    budget,
+    savedValue: Math.round(savedValue * 100) / 100,
+    plannedTotal: Math.round(plannedTotal * 100) / 100,
+    purchasedTotal: Math.round(purchasedTotal * 100) / 100,
+    committed: Math.round(committed * 100) / 100,
+    remaining,
+    progress,
+    overBudget: remaining !== null && remaining < 0
+  };
+}
+
+// Lightweight variant for dashboards: avoids loading full product relations just
+// to calculate totals.
+export async function getBudgetOverview(userId: string) {
+  const [settings, totals, statusProducts] = await Promise.all([
+    prisma.settings.findUnique({
+      where: { userId },
+      select: { currency: true, budget: true }
+    }),
+    prisma.product.aggregate({ where: { userId }, _sum: { currentPrice: true } }),
+    prisma.product.findMany({
+      where: { userId, status: { in: ["TO_BUY", "PURCHASED"] } },
+      select: { id: true, groupId: true, status: true, currentPrice: true }
+    })
+  ]);
+
+  const planned = dedupeGroupedOffers(statusProducts.filter((product) => product.status === "TO_BUY"));
+  const purchased = dedupeGroupedOffers(
+    statusProducts.filter((product) => product.status === "PURCHASED")
+  );
+  const plannedTotal = planned.reduce((sum, product) => sum + (product.currentPrice ?? 0), 0);
+  const purchasedTotal = purchased.reduce((sum, product) => sum + (product.currentPrice ?? 0), 0);
+
+  return summarizeBudget(
+    settings?.currency ?? "PLN",
+    settings?.budget ?? null,
+    totals._sum.currentPrice ?? 0,
+    plannedTotal,
+    purchasedTotal
+  );
 }
 
 export async function getBudgetSummary(userId: string) {
@@ -53,10 +108,13 @@ export async function getBudgetSummary(userId: string) {
   const purchasedItems = purchasedProducts.map(serializeProduct);
   const plannedTotal = plannedItems.reduce((sum, product) => sum + (product.currentPrice ?? 0), 0);
   const purchasedTotal = purchasedItems.reduce((sum, product) => sum + (product.currentPrice ?? 0), 0);
-  const committed = plannedTotal + purchasedTotal;
-  const remaining = budget === null ? null : Math.round((budget - committed) * 100) / 100;
-  const progress =
-    budget !== null && budget > 0 ? Math.round(Math.min(100, (committed / budget) * 100) * 10) / 10 : 0;
+  const summary = summarizeBudget(
+    settings?.currency ?? "PLN",
+    budget,
+    savedValue,
+    plannedTotal,
+    purchasedTotal
+  );
 
   const categoryMap = new Map<string, { id: string; name: string; color: string; planned: number; purchased: number }>();
   for (const product of [...plannedItems, ...purchasedItems]) {
@@ -74,15 +132,7 @@ export async function getBudgetSummary(userId: string) {
   }
 
   return {
-    currency: settings?.currency ?? "PLN",
-    budget,
-    savedValue: Math.round(savedValue * 100) / 100,
-    plannedTotal: Math.round(plannedTotal * 100) / 100,
-    purchasedTotal: Math.round(purchasedTotal * 100) / 100,
-    committed: Math.round(committed * 100) / 100,
-    remaining,
-    progress,
-    overBudget: remaining !== null && remaining < 0,
+    ...summary,
     plannedItems,
     purchasedItems,
     unpricedPlanned: plannedItems.filter((product) => product.currentPrice === null).length,
