@@ -4,12 +4,9 @@ import { prisma } from "../lib/prisma";
 import { asyncHandler, AppError } from "../lib/errors";
 import { hashPassword, verifyPassword, createSession, revokeSession, revokeAllSessions, generateToken, hashToken } from "../lib/auth";
 import { requireAuth, requireOwner } from "../middleware/auth";
-import { authMiddleware } from "../middleware/auth";
 import { ensureAccountDefaults } from "../services/accountDefaults";
 
 export const authRouter = Router();
-
-authRouter.use(authMiddleware);
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -124,7 +121,11 @@ authRouter.get("/invitations", requireAuth, requireOwner, asyncHandler(async (_r
 
 authRouter.post("/invitations/:id/revoke", requireAuth, requireOwner, asyncHandler(async (req, res) => {
   const id = z.string().min(1).parse(req.params.id);
-  await prisma.invitation.update({ where: { id }, data: { revokedAt: new Date() } });
+  const result = await prisma.invitation.updateMany({
+    where: { id, revokedAt: null, usedAt: null },
+    data: { revokedAt: new Date() }
+  });
+  if (result.count === 0) throw new AppError(404, "Invitation not found.", "INVITATION_NOT_FOUND");
   res.json({ ok: true });
 }));
 
@@ -133,14 +134,25 @@ authRouter.post("/invite/accept", asyncHandler(async (req, res) => {
   const schema = z.object({ token: z.string().min(1), username: z.string().min(3).max(40), email: z.string().email(), password: z.string().min(12) });
   const body = schema.parse(req.body);
   const tokenHash = hashToken(body.token);
-  const inv = await prisma.invitation.findUnique({ where: { tokenHash } });
-  if (!inv || inv.revokedAt || inv.usedAt || inv.expiresAt < new Date()) {
-    throw new AppError(400, "Invalid or expired invitation.", "INVALID_INVITATION");
-  }
-  const user = await prisma.user.create({
-    data: { username: body.username, email: body.email, passwordHash: hashPassword(body.password), role: "USER", status: "ACTIVE" }
+  // Create the account and consume the invitation atomically so a token can
+  // never be redeemed twice by concurrent requests.
+  const user = await prisma.$transaction(async (tx) => {
+    const inv = await tx.invitation.findUnique({ where: { tokenHash } });
+    if (!inv || inv.revokedAt || inv.usedAt || inv.expiresAt < new Date()) {
+      throw new AppError(400, "Invalid or expired invitation.", "INVALID_INVITATION");
+    }
+    const created = await tx.user.create({
+      data: { username: body.username, email: body.email, passwordHash: hashPassword(body.password), role: "USER", status: "ACTIVE" }
+    });
+    const consumed = await tx.invitation.updateMany({
+      where: { id: inv.id, usedAt: null, revokedAt: null },
+      data: { usedAt: new Date(), usedById: created.id }
+    });
+    if (consumed.count === 0) {
+      throw new AppError(400, "Invalid or expired invitation.", "INVALID_INVITATION");
+    }
+    return created;
   });
-  await prisma.invitation.update({ where: { id: inv.id }, data: { usedAt: new Date(), usedById: user.id } });
   await ensureAccountDefaults(user.id);
   const token = await createSession(user.id);
   setSessionCookie(res, token);
@@ -155,14 +167,16 @@ authRouter.get("/users", requireAuth, requireOwner, asyncHandler(async (_req, re
 
 authRouter.post("/users/:id/block", requireAuth, requireOwner, asyncHandler(async (req, res) => {
   const id = z.string().min(1).parse(req.params.id);
-  await prisma.user.update({ where: { id }, data: { status: "DISABLED" } });
+  const result = await prisma.user.updateMany({ where: { id }, data: { status: "DISABLED" } });
+  if (result.count === 0) throw new AppError(404, "User not found.", "USER_NOT_FOUND");
   await revokeAllSessions(id);
   res.json({ ok: true });
 }));
 
 authRouter.post("/users/:id/unblock", requireAuth, requireOwner, asyncHandler(async (req, res) => {
   const id = z.string().min(1).parse(req.params.id);
-  await prisma.user.update({ where: { id }, data: { status: "ACTIVE" } });
+  const result = await prisma.user.updateMany({ where: { id }, data: { status: "ACTIVE" } });
+  if (result.count === 0) throw new AppError(404, "User not found.", "USER_NOT_FOUND");
   res.json({ ok: true });
 }));
 
@@ -170,6 +184,7 @@ authRouter.delete("/users/:id", requireAuth, requireOwner, asyncHandler(async (r
   const id = z.string().min(1).parse(req.params.id);
   const owner = (req as any).user;
   if (id === owner.id) throw new AppError(400, "Cannot delete yourself.", "INVALID");
-  await prisma.user.delete({ where: { id } });
+  const result = await prisma.user.deleteMany({ where: { id } });
+  if (result.count === 0) throw new AppError(404, "User not found.", "USER_NOT_FOUND");
   res.json({ ok: true });
 }));

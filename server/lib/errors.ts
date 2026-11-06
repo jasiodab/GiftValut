@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 
 export class AppError extends Error {
@@ -45,6 +46,24 @@ export function errorHandler(error: unknown, _req: Request, res: Response, _next
         details: error.flatten()
       }
     });
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      const target = (error.meta?.target as string[] | string | undefined) ?? "value";
+      const field = Array.isArray(target) ? target.join(", ") : target;
+      return res.status(409).json({
+        error: {
+          code: "CONFLICT",
+          message: `A record with this ${field} already exists.`
+        }
+      });
+    }
+    if (error.code === "P2025") {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "The requested record was not found." }
+      });
+    }
   }
 
   if (error instanceof AppError) {

@@ -12,7 +12,9 @@ export function verifyPassword(password: string, stored: string): boolean {
   if (parts.length !== 3 || parts[0] !== "scrypt") return false;
   const salt = Buffer.from(parts[1], "hex");
   const key = Buffer.from(parts[2], "hex");
-  const derived = crypto.scryptSync(password, salt, 64);
+  // Reject malformed stored hashes instead of throwing from timingSafeEqual.
+  if (salt.length === 0 || key.length !== 64) return false;
+  const derived = crypto.scryptSync(password, salt, key.length);
   return crypto.timingSafeEqual(key, derived);
 }
 
