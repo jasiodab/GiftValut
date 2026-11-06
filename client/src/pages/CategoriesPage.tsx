@@ -157,7 +157,7 @@ export function CategoriesPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <SummaryFact label="Categories" value={String(categories.length)} hint="In your collection" />
         <SummaryFact label="Categorised products" value={String(totalProducts)} hint="Across every category" />
         <SummaryFact
@@ -168,7 +168,7 @@ export function CategoriesPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <Skeleton key={index} className="h-[168px] rounded-xl" />
           ))}
@@ -191,7 +191,7 @@ export function CategoriesPage() {
       ) : null}
 
       {!isLoading && categories.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {categories.map((category) => {
             const Icon = ICON_MAP[category.icon] ?? Tag;
             const share = totalProducts > 0 ? Math.round((category.productCount / totalProducts) * 100) : 0;

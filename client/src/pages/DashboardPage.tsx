@@ -142,9 +142,9 @@ export function DashboardPage() {
             />
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-12">
+          <section className="grid grid-cols-1 gap-5 xl:grid-cols-12">
             <Card className="xl:col-span-8">
-              <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
+              <div className="flex items-center justify-between border-b border-border/70 px-4 py-3.5 sm:px-5 sm:py-4">
                 <div>
                   <h2 className="text-sm font-semibold">Recently added</h2>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">The newest additions to your collection</p>
@@ -157,7 +157,7 @@ export function DashboardPage() {
                 </Link>
               </div>
               {data.recentlyAdded.length ? (
-                <div className="grid gap-3 p-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
                   {data.recentlyAdded.map((product) => (
                     <MiniProduct key={product.id} product={product} />
                   ))}
@@ -180,7 +180,7 @@ export function DashboardPage() {
             </Card>
 
             <Card className="flex flex-col xl:col-span-4">
-              <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
+              <div className="flex items-center justify-between border-b border-border/70 px-4 py-3.5 sm:px-5 sm:py-4">
                 <div>
                   <h2 className="text-sm font-semibold">Budget overview</h2>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">Planned and completed spending</p>
@@ -193,7 +193,7 @@ export function DashboardPage() {
                   <ArrowUpRight className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="flex flex-1 flex-col p-5">
+              <div className="flex flex-1 flex-col p-4 sm:p-5">
                 {data.budget.budget === null ? (
                   <div className="flex flex-1 flex-col justify-between">
                     <div>
@@ -255,7 +255,7 @@ export function DashboardPage() {
             </Card>
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-12">
+          <section className="grid grid-cols-1 gap-5 xl:grid-cols-12">
             <Card className="xl:col-span-4">
               <SectionHeading
                 title="Favorites"
@@ -383,9 +383,9 @@ export function DashboardPage() {
             </Card>
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-12">
+          <section className="grid grid-cols-1 gap-5 xl:grid-cols-12">
             <Card className="xl:col-span-8">
-              <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
+              <div className="flex items-center justify-between border-b border-border/70 px-4 py-3.5 sm:px-5 sm:py-4">
                 <div>
                   <h2 className="text-sm font-semibold">Collection at a glance</h2>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">How your saved products are distributed</p>
@@ -397,7 +397,7 @@ export function DashboardPage() {
                   Categories <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>
-              <div className="space-y-4 p-5">
+              <div className="space-y-4 p-4 sm:p-5">
                 {data.categorySummary.length ? (
                   data.categorySummary.map((category) => {
                     const ratio =
@@ -433,7 +433,7 @@ export function DashboardPage() {
               </div>
             </Card>
             <Card className="xl:col-span-4">
-              <div className="border-b border-border/70 px-5 py-4">
+              <div className="border-b border-border/70 px-4 py-3.5 sm:px-5 sm:py-4">
                 <h2 className="text-sm font-semibold">Vault details</h2>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">A quick look at this collection</p>
               </div>
@@ -443,7 +443,7 @@ export function DashboardPage() {
                 <VaultFact label="With prices" value={String(data.stats.withPrice)} />
                 <VaultFact label="Purchased value" value={formatCompactMoney(data.budget.purchasedTotal, data.currency)} />
               </div>
-              <div className="p-5">
+              <div className="p-4 sm:p-5">
                 <div className="rounded-lg border border-border/80 bg-card p-3">
                   <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                     Last backup
@@ -508,7 +508,7 @@ function MiniProduct({ product }: { product: Product }) {
       to={`/products/${product.id}`}
       className="group flex items-center gap-3 rounded-lg border border-border/70 bg-card p-2.5 transition-all hover:border-border hover:bg-secondary hover:shadow-card"
     >
-      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border/60">
+      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-border/60 sm:h-16 sm:w-16">
         <ProductImage src={product.imageUrl} alt={product.name} iconClassName="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
@@ -564,7 +564,7 @@ function SectionHeading({
   icon: typeof Heart;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
+    <div className="flex items-center justify-between border-b border-border/70 px-4 py-3.5 sm:px-5 sm:py-4">
       <div className="flex items-center gap-2.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-soft text-primary">
           <Icon className="h-3.5 w-3.5" />
@@ -615,10 +615,10 @@ function DashboardSkeleton() {
           </Card>
         ))}
       </div>
-      <div className="grid gap-5 xl:grid-cols-12">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
         <Card className="p-5 xl:col-span-8">
           <Skeleton className="h-4 w-32" />
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-24 rounded-xl" />
             ))}

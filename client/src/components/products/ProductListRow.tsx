@@ -23,7 +23,7 @@ export function ProductListRow({ product, selectable, selected, onSelectedChange
   return (
     <div
       className={cn(
-        "group relative grid grid-cols-[auto_52px_minmax(0,1fr)_138px_142px] items-center gap-4 rounded-xl border border-border/80 bg-card px-4 py-3 shadow-card transition-all hover:border-border hover:shadow-soft md:grid-cols-[auto_52px_minmax(0,1fr)_110px_138px_142px] lg:grid-cols-[auto_52px_minmax(0,1fr)_140px_110px_150px_142px]",
+        "group relative grid grid-cols-[auto_52px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-border/80 bg-card px-3 py-3 shadow-card transition-all hover:border-border hover:shadow-soft sm:grid-cols-[auto_52px_minmax(0,1fr)_auto_auto] sm:gap-4 sm:px-4 md:grid-cols-[auto_52px_minmax(0,1fr)_auto_auto_auto] xl:grid-cols-[auto_52px_minmax(0,1fr)_auto_auto_auto_auto]",
         selected && "border-primary/40 ring-1 ring-primary/15"
       )}
     >
@@ -81,7 +81,7 @@ export function ProductListRow({ product, selectable, selected, onSelectedChange
         <StatusBadge status={product.status} />
       </div>
 
-      <div className="hidden text-[11px] text-muted-foreground lg:block">
+      <div className="hidden text-[11px] text-muted-foreground xl:block">
         <div>{product.availability ?? "No availability"}</div>
         <div className="mt-0.5">Updated {timeAgo(product.lastPriceCheckAt)}</div>
       </div>
@@ -93,7 +93,7 @@ export function ProductListRow({ product, selectable, selected, onSelectedChange
         </div>
       </div>
 
-      <div className="z-20 flex items-center justify-end">
+      <div className="z-20 hidden items-center justify-end sm:flex">
         <a
           href={product.url}
           target="_blank"

@@ -208,7 +208,7 @@ export function BudgetPage() {
             </Card>
           )}
 
-          <section className="grid gap-5 xl:grid-cols-12">
+          <section className="grid grid-cols-1 gap-5 xl:grid-cols-12">
             <Card className="xl:col-span-8">
               <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
                 <div>
@@ -297,7 +297,7 @@ export function BudgetPage() {
               </Button>
             </div>
             {data.purchasedItems.length ? (
-              <div className="grid gap-2 p-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2 p-4 sm:grid-cols-2 xl:grid-cols-3">
                 {data.purchasedItems.map((item) => (
                   <Link
                     key={item.id}
@@ -470,7 +470,7 @@ function BudgetSkeleton() {
   return (
     <div className="space-y-5">
       <Skeleton className="h-[280px] rounded-xl" />
-      <div className="grid gap-5 xl:grid-cols-12">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
         <Skeleton className="h-[320px] rounded-xl xl:col-span-8" />
         <Skeleton className="h-[320px] rounded-xl xl:col-span-4" />
       </div>

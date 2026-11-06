@@ -17,7 +17,7 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 backdrop-blur-md lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-2">
+      <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-1.5">
         {items.slice(0, 2).map((item) => (
           <NavLink
             key={item.to}
@@ -25,7 +25,7 @@ export function BottomNav() {
             end={item.end}
             className={({ isActive }) =>
               cn(
-                "flex min-w-[56px] flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 text-[10px] font-medium",
+                "flex min-h-[52px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1 text-[11px] font-medium",
                 isActive ? "text-primary" : "text-muted-foreground"
               )
             }
@@ -48,7 +48,7 @@ export function BottomNav() {
             to={item.to}
             className={({ isActive }) =>
               cn(
-                "flex min-w-[56px] flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 text-[10px] font-medium",
+                "flex min-h-[52px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1 text-[11px] font-medium",
                 isActive ? "text-primary" : "text-muted-foreground"
               )
             }

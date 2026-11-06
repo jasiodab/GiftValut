@@ -181,7 +181,7 @@ export function SettingsPage() {
       ) : null}
 
       {data && settings ? (
-        <div className="grid gap-5 xl:grid-cols-12">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
           <div className="space-y-5 xl:col-span-7">
             <Card>
               <SettingsHeading
@@ -190,7 +190,7 @@ export function SettingsPage() {
                 description="Currency, default view and the budget used across the vault."
               />
               <div className="space-y-5 p-5">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>Display currency</Label>
                     <Select value={currency} onValueChange={setCurrency}>
@@ -581,7 +581,7 @@ function AboutRow({ label, value }: { label: string; value: string }) {
 
 function SettingsSkeleton() {
   return (
-    <div className="grid gap-5 xl:grid-cols-12">
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
       <div className="space-y-5 xl:col-span-7">
         <Skeleton className="h-[360px] rounded-xl" />
         <Skeleton className="h-[280px] rounded-xl" />

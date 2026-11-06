@@ -277,7 +277,7 @@ export function ProductDetailPage() {
           </Button>
           <Button onClick={() => searchPrices.mutate()} disabled={searchPrices.isPending}>
             {searchPrices.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Sprawd� najlepsz� cen�
+            Sprawdź najlepszą cenę
           </Button>
           <Button variant="outline" onClick={() => setEditOpen(true)}>
             <Pencil className="h-4 w-4" /> Edit
@@ -343,7 +343,7 @@ export function ProductDetailPage() {
         </div>
       </header>
 
-      <div className="grid gap-5 xl:grid-cols-12">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
         <div className="space-y-5 xl:col-span-5">
           <Card className="overflow-hidden">
             <div className="group relative aspect-[4/3] overflow-hidden bg-card">
@@ -357,7 +357,7 @@ export function ProductDetailPage() {
                   {product.discountPercent}% below original
                 </Badge>
               ) : null}
-              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t bg-foreground/55 to-transparent p-3 pt-10 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t bg-foreground/55 to-transparent p-3 pt-10 opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100">
                 <div className="flex gap-2">
                   <Button
                     variant="secondary"
@@ -1034,7 +1034,7 @@ function ProductDetailSkeleton() {
         <Skeleton className="h-9 w-full max-w-[520px]" />
         <Skeleton className="h-6 w-64" />
       </div>
-      <div className="grid gap-5 xl:grid-cols-12">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
         <div className="space-y-5 xl:col-span-5">
           <Skeleton className="aspect-[4/3] rounded-xl" />
           <Skeleton className="h-[220px] rounded-xl" />

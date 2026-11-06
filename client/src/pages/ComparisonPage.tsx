@@ -216,7 +216,7 @@ export function ComparisonPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <SummaryFact label="Comparison groups" value={String(groups.length)} hint="Independent gift decisions" icon={Layers} />
         <SummaryFact
           label="Offers compared"
@@ -262,7 +262,7 @@ export function ComparisonPage() {
       ) : null}
 
       {!isLoading && groups.length > 0 ? (
-        <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           {groups.map((group) => {
             const prices = group.offers
               .map((offer) => offer.currentPrice)

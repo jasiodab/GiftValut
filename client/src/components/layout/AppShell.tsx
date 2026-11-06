@@ -29,7 +29,7 @@ export function AppShell() {
         <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
         <div className="min-h-screen lg:pl-[260px]">
           <MobileHeader onOpen={() => setMobileOpen(true)} />
-          <main className="page-enter mx-auto w-full max-w-[1560px] px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:py-8 lg:pb-8 xl:px-10">
+          <main className="page-enter mx-auto w-full max-w-[1560px] px-4 py-5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:px-8 lg:py-8 lg:pb-8 xl:px-10">
             <Outlet />
           </main>
         </div>

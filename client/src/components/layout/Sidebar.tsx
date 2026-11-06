@@ -62,6 +62,10 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-border bg-card transition-transform duration-300 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "env(safe-area-inset-bottom)"
+        }}
       >
         <div className="flex h-full min-h-0 flex-col">
           <div className="flex items-center justify-between px-5 pb-4 pt-5">
@@ -263,15 +267,18 @@ function NavItem({
 
 export function MobileHeader({ onOpen }: { onOpen: () => void }) {
   return (
-    <div className="sticky top-0 z-30 flex items-center justify-between border-b border-border/80 bg-card/90 px-4 py-3 backdrop-blur-md lg:hidden">
+    <div
+      className="sticky top-0 z-30 flex items-center justify-between border-b border-border/80 bg-card/90 px-4 py-2.5 backdrop-blur-md lg:hidden"
+      style={{ paddingTop: "max(0.625rem, env(safe-area-inset-top))" }}
+    >
       <div className="flex items-center gap-2.5">
         <button
           type="button"
           onClick={onOpen}
-          className="rounded-lg border border-border bg-card p-2 text-muted-foreground shadow-sm"
+          className="-ml-1 flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm"
           aria-label="Open navigation"
         >
-          <Menu className="h-4 w-4" />
+          <Menu className="h-[18px] w-[18px]" />
         </button>
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">

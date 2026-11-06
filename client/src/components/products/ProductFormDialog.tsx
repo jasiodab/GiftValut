@@ -408,8 +408,8 @@ export function ProductFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92vh] max-w-3xl flex-col gap-0 overflow-hidden p-0">
-        <DialogHeader className="border-b border-border/80 px-6 py-5">
+      <DialogContent className="flex max-h-[calc(100dvh-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:max-h-[92vh]">
+        <DialogHeader className="border-b border-border/80 px-4 py-4 sm:px-6 sm:py-5">
           <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
             {isEditing ? "Edit product" : "New addition"}
           </div>
@@ -422,7 +422,7 @@ export function ProductFormDialog({
         </DialogHeader>
 
         <div className="scrollbar-thin flex-1 overflow-y-auto">
-          <div className="space-y-6 px-6 py-5">
+          <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-5">
             <div className="rounded-xl border border-border bg-card p-4">
               <Label htmlFor="product-url" className="mb-2 flex items-center gap-1.5">
                 <Link2 className="h-3.5 w-3.5 text-primary" />
@@ -531,12 +531,12 @@ export function ProductFormDialog({
                   </div>
                 ) : null}
 
-                <div className="grid gap-5 md:grid-cols-[180px_1fr]">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-[180px_1fr]">
                   <div>
                     <Label className="mb-2 block">Product image</Label>
                     <div className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-card">
                       <ProductImage src={form.imagePath} alt="Product preview" iconClassName="h-6 w-6" />
-                      <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t bg-foreground/40 via-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t bg-foreground/40 via-transparent p-2 opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100">
                         <div className="flex gap-1.5">
                           <Button
                             type="button"
@@ -688,7 +688,7 @@ export function ProductFormDialog({
 
                 <div className="border-t border-border/70 pt-5">
                   <h3 className="mb-4 text-sm font-semibold">Organisation</h3>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label>Category *</Label>
                       <Select value={form.categoryId} onValueChange={(value) => update("categoryId", value)}>
@@ -839,7 +839,7 @@ export function ProductFormDialog({
           </div>
         </div>
 
-        <DialogFooter className="border-t border-border/80 bg-card px-6 py-4">
+        <DialogFooter className="border-t border-border/80 bg-card px-4 py-4 sm:px-6">
           {detailsVisible ? (
             <div className="mr-auto hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
               <Sparkles className="h-3 w-3" />
