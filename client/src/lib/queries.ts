@@ -15,21 +15,28 @@ export const queryKeys = {
 };
 
 export function useMeta() {
-  return useQuery({ queryKey: queryKeys.meta, queryFn: api.meta, staleTime: 15_000 });
+  return useQuery({
+    queryKey: queryKeys.meta,
+    queryFn: ({ signal }) => api.meta(signal),
+    staleTime: 15_000
+  });
 }
 
 export function useDashboard() {
-  return useQuery({ queryKey: queryKeys.dashboard, queryFn: api.dashboard });
+  return useQuery({
+    queryKey: queryKeys.dashboard,
+    queryFn: ({ signal }) => api.dashboard(signal)
+  });
 }
 
 export function useBudget() {
-  return useQuery({ queryKey: queryKeys.budget, queryFn: api.budget });
+  return useQuery({ queryKey: queryKeys.budget, queryFn: ({ signal }) => api.budget(signal) });
 }
 
 export function useProducts(filters: ProductFilters) {
   return useQuery({
     queryKey: queryKeys.products(filters),
-    queryFn: () => api.products(filters),
+    queryFn: ({ signal }) => api.products(filters, signal),
     placeholderData: (previous) => previous
   });
 }
@@ -37,23 +44,23 @@ export function useProducts(filters: ProductFilters) {
 export function useProduct(id: string | undefined) {
   return useQuery({
     queryKey: queryKeys.product(id ?? ""),
-    queryFn: () => api.product(id as string),
+    queryFn: ({ signal }) => api.product(id as string, signal),
     enabled: Boolean(id)
   });
 }
 
 export function useCategories() {
-  return useQuery({ queryKey: queryKeys.categories, queryFn: api.categories });
+  return useQuery({ queryKey: queryKeys.categories, queryFn: ({ signal }) => api.categories(signal) });
 }
 
 export function useTags() {
-  return useQuery({ queryKey: queryKeys.tags, queryFn: api.tags });
+  return useQuery({ queryKey: queryKeys.tags, queryFn: ({ signal }) => api.tags(signal) });
 }
 
 export function useGroups() {
-  return useQuery({ queryKey: queryKeys.groups, queryFn: api.groups });
+  return useQuery({ queryKey: queryKeys.groups, queryFn: ({ signal }) => api.groups(signal) });
 }
 
 export function useSettings() {
-  return useQuery({ queryKey: queryKeys.settings, queryFn: api.settings });
+  return useQuery({ queryKey: queryKeys.settings, queryFn: ({ signal }) => api.settings(signal) });
 }

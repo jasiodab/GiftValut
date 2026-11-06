@@ -36,8 +36,8 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
       <Card className="w-full max-w-sm p-6 space-y-4">
         <h1 className="text-xl font-semibold">Gift Vault</h1>
         <form onSubmit={submit} className="space-y-3">
-          <Input placeholder="Username" value={u} onChange={(e) => setU(e.target.value)} />
-          <Input type="password" placeholder="Password" value={p} onChange={(e) => setP(e.target.value)} />
+          <Input autoComplete="username" placeholder="Username" value={u} onChange={(e) => setU(e.target.value)} required />
+          <Input autoComplete="current-password" type="password" placeholder="Password" value={p} onChange={(e) => setP(e.target.value)} required />
           {err && <p className="text-sm text-destructive">{err}</p>}
           <Button type="submit" className="w-full" disabled={loading}>{loading ? "..." : "Sign in"}</Button>
         </form>
@@ -79,10 +79,18 @@ function InvitationScreen({ token }: { token: string }) {
 export function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   useEffect(() => { api.authMe().then(() => setAuthed(true)).catch(() => setAuthed(false)); }, []);
+  useEffect(() => {
+    const onUnauthorized = () => {
+      queryClient.clear();
+      setAuthed(false);
+    };
+    window.addEventListener("gv:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("gv:unauthorized", onUnauthorized);
+  }, []);
   const invitationToken = window.location.pathname.match(/^\/invite\/([^/]+)\/?$/)?.[1];
   if (invitationToken) return <InvitationScreen token={decodeURIComponent(invitationToken)} />;
   if (authed === null) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
-  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
+  if (!authed) return <LoginScreen onLogin={() => { queryClient.clear(); setAuthed(true); }} />;
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delayDuration={250}>

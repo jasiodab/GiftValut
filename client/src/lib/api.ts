@@ -58,6 +58,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       payload = null;
     }
     const error = (payload as { error?: { message?: string; code?: string; details?: unknown } } | null)?.error;
+    const isAuthProbe =
+      path.startsWith("/auth/login") ||
+      path.startsWith("/auth/me") ||
+      path.startsWith("/auth/bootstrap") ||
+      path.startsWith("/auth/invite/accept");
+    if (response.status === 401 && !isAuthProbe && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("gv:unauthorized"));
+    }
     throw new ApiError(
       response.status,
       error?.message ?? `Request failed with HTTP ${response.status}.`,
@@ -92,11 +100,11 @@ export type ProductFilters = {
 };
 
 export const api = {
-  meta: () => request<AppMeta>("/meta"),
-  dashboard: () => request<DashboardData>("/dashboard"),
-  budget: () => request<BudgetSummary>("/budget"),
+  meta: (signal?: AbortSignal) => request<AppMeta>("/meta", { signal }),
+  dashboard: (signal?: AbortSignal) => request<DashboardData>("/dashboard", { signal }),
+  budget: (signal?: AbortSignal) => request<BudgetSummary>("/budget", { signal }),
 
-  products: (filters: ProductFilters = {}) =>
+  products: (filters: ProductFilters = {}, signal?: AbortSignal) =>
     request<ProductsResponse>(
       `/products${buildQuery({
         search: filters.search,
@@ -107,9 +115,11 @@ export const api = {
         sort: filters.sort,
         page: filters.page,
         pageSize: filters.pageSize
-      })}`
+      })}`,
+      { signal }
     ),
-  product: (id: string) => request<ProductDetailResponse>(`/products/${id}`),
+  product: (id: string, signal?: AbortSignal) =>
+    request<ProductDetailResponse>(`/products/${id}`, { signal }),
   createProduct: (input: ProductInput) =>
     request<{ product: Product }>("/products", { method: "POST", body: input }),
   updateProduct: (id: string, input: Partial<ProductInput>) =>
@@ -137,15 +147,15 @@ export const api = {
       body
     }),
 
-  categories: () => request<{ categories: Category[] }>("/categories"),
+  categories: (signal?: AbortSignal) => request<{ categories: Category[] }>("/categories", { signal }),
   createCategory: (body: { name: string; color: string; icon: string }) =>
     request<{ category: Category }>("/categories", { method: "POST", body }),
   updateCategory: (id: string, body: { name?: string; color?: string; icon?: string }) =>
     request<{ category: Category }>(`/categories/${id}`, { method: "PATCH", body }),
   deleteCategory: (id: string) => request<{ deleted: boolean }>(`/categories/${id}`, { method: "DELETE" }),
-  tags: () => request<{ tags: Tag[] }>("/tags"),
+  tags: (signal?: AbortSignal) => request<{ tags: Tag[] }>("/tags", { signal }),
 
-  groups: () => request<{ groups: ComparisonGroup[] }>("/groups"),
+  groups: (signal?: AbortSignal) => request<{ groups: ComparisonGroup[] }>("/groups", { signal }),
   createGroup: (body: { name: string; productIds: string[] }) =>
     request<{ group: ComparisonGroup }>("/groups", { method: "POST", body }),
   updateGroup: (id: string, body: { name: string }) =>
@@ -162,7 +172,7 @@ export const api = {
   extract: (url: string, signal?: AbortSignal) =>
     request<ExtractionResult>("/extract", { method: "POST", body: { url }, signal }),
 
-  settings: () => request<SettingsResponse>("/settings"),
+  settings: (signal?: AbortSignal) => request<SettingsResponse>("/settings", { signal }),
   updateSettings: (body: Partial<Pick<Settings, "currency" | "autoTrackingEnabled" | "priceUpdateIntervalMinutes" | "defaultProductView" | "budget">>) =>
     request<{ settings: Settings }>("/settings", { method: "PATCH", body }),
   restoreBackup: (file: File) => {
@@ -182,18 +192,18 @@ export const api = {
     });
   },
 
-  pricingProviders: () => request<{ providers: { provider: string; configured: boolean; message: string }[] }>("/pricing/providers"),
+  pricingProviders: (signal?: AbortSignal) => request<{ providers: { provider: string; configured: boolean; message: string }[] }>("/pricing/providers", { signal }),
   searchPrices: (productId: string, force = false) =>
     request<{ checkId: string; offers: any[]; providerRuns: any[]; cached: boolean }>(
       "/pricing/products/" + productId + "/search" + (force ? "?force=true" : ""),
       { method: "POST" }
     ),
-  priceOffers: (productId: string) => request<{ offers: any[] }>("/pricing/products/" + productId + "/offers"),
-  priceHistory: (productId: string) => request<{ offers: any[] }>("/pricing/products/" + productId + "/history"),
-  bestPrice: (productId: string) => request<{ offer: any }>("/pricing/products/" + productId + "/best-price"),
+  priceOffers: (productId: string, signal?: AbortSignal) => request<{ offers: any[] }>("/pricing/products/" + productId + "/offers", { signal }),
+  priceHistory: (productId: string, signal?: AbortSignal) => request<{ offers: any[] }>("/pricing/products/" + productId + "/history", { signal }),
+  bestPrice: (productId: string, signal?: AbortSignal) => request<{ offer: any }>("/pricing/products/" + productId + "/best-price", { signal }),
   confirmOffer: (offerId: string) => request<{ offer: any }>("/pricing/offers/" + offerId + "/confirm", { method: "POST" }),
   rejectOffer: (offerId: string) => request<{ offer: any }>("/pricing/offers/" + offerId + "/reject", { method: "POST" }),
-    authMe: () => request<{ user: any }>("/auth/me"),
+  authMe: () => request<{ user: any }>("/auth/me"),
   authLogin: (body: { username: string; password: string }) => request<{ user: any }>("/auth/login", { method: "POST", body }),
   authLogout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   authChangePassword: (body: { currentPassword: string; newPassword: string }) => request<{ ok: boolean }>("/auth/change-password", { method: "POST", body }),
