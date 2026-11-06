@@ -9,9 +9,16 @@ import { App } from "./App";
 initTheme();
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
-  });
+  if (import.meta.env.PROD) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    });
+  } else {
+    // Development must never serve a stale cached shell.
+    void navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) void registration.unregister();
+    });
+  }
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
