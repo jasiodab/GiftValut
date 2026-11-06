@@ -14,7 +14,6 @@ import { authRouter } from "./routes/auth";
 import { authMiddleware } from "./middleware/auth";
 import { requireAuth } from "./middleware/auth";
 import { createRateLimiter, getClientIp, userOrIpKey } from "./middleware/rateLimit";
-import { pricingRouter } from "./routes/pricing";
 import { prisma } from "./lib/prisma";
 import { ensureDataDirectories, ROOT_DIR, UPLOAD_DIR, absoluteUploadPath } from "./lib/paths";
 import { AppError, asyncHandler, errorHandler, notFoundHandler } from "./lib/errors";
@@ -52,8 +51,7 @@ export function createApp() {
       req.path === "/health" ||
       req.path === "/auth/login" ||
       req.path === "/auth/bootstrap" ||
-      req.path === "/extract" ||
-      req.path.startsWith("/pricing/products/") && req.path.endsWith("/search")
+      req.path === "/extract"
   });
 
   const loginLimiter = createRateLimiter({
@@ -77,17 +75,9 @@ export function createApp() {
     keyGenerator: userOrIpKey
   });
 
-  const priceSearchLimiter = createRateLimiter({
-    windowMs: 15 * 60 * 1000,
-    max: 20,
-    keyPrefix: "price-search",
-    keyGenerator: userOrIpKey
-  });
-
   app.use("/api/auth/login", loginLimiter);
   app.use("/api/auth/bootstrap", bootstrapLimiter);
   app.use("/api/extract", extractLimiter);
-  app.use("/api/pricing/products/:productId/search", priceSearchLimiter);
   app.use("/api", generalApiLimiter);
   app.use("/api", (_req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
@@ -128,13 +118,12 @@ export function createApp() {
       const userId = (req as any).user.id as string;
       const [productCount, settings] = await Promise.all([
         prisma.product.count({ where: { userId } }),
-        prisma.settings.findUnique({ where: { userId } })
+        prisma.settings.findUnique({ where: { userId }, select: { lastBackupAt: true } })
       ]);
       res.json({
         productCount,
         status: "ok",
         database: "connected",
-        autoTracking: settings?.autoTrackingEnabled ?? true,
         frogMode: process.env.FROG_MODE === "true",
         lastBackupAt: settings?.lastBackupAt ?? null
       });
@@ -151,7 +140,6 @@ export function createApp() {
   app.use("/api/settings", settingsRouter);
   app.use("/api/uploads", uploadsRouter);
   app.use("/api/auth", authRouter);
-  app.use("/api/pricing", pricingRouter);
   app.use("/api", notFoundHandler);
 
   const clientDist = path.join(ROOT_DIR, "client", "dist");

@@ -2,7 +2,6 @@
 import { createApp } from "./app";
 import { prisma } from "./lib/prisma";
 import { cleanupExpiredSessions } from "./lib/auth";
-import { startPriceScheduler, stopPriceScheduler } from "./services/priceTracking";
 
 const port = Number(process.env.PORT ?? 3001);
 const frogMode = process.env.FROG_MODE === "true";
@@ -29,11 +28,8 @@ async function main() {
     console.log(`Gift Vault API listening on http://localhost:${port}${frogMode ? " (FROG MODE)" : ""}`);
   });
 
-  startPriceScheduler();
-
   const shutdown = async (signal: string) => {
     console.log(`\n${signal} received, shutting down Gift Vault...`);
-    stopPriceScheduler();
     server.close();
     await prisma.$disconnect();
     process.exit(0);

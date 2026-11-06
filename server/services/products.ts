@@ -19,7 +19,6 @@ type ProductInput = {
   availability?: string | null;
   status?: string;
   notes?: string | null;
-  autoTrack?: boolean;
   storeName?: string | null;
   storeDomain?: string | null;
   categoryId?: string;
@@ -151,7 +150,6 @@ export async function createProduct(userId: string, input: ProductInput) {
   const tags = cleanTagNames(input.tags);
   const imagePath = await assertOwnedImage(userId, normalizeImagePath(input.imagePath));
   const price = input.currentPrice ?? null;
-  const now = new Date();
 
   if (input.groupId) {
     const group = await prisma.productGroup.findFirst({ where: { id: input.groupId, userId } });
@@ -173,30 +171,10 @@ export async function createProduct(userId: string, input: ProductInput) {
       availability: cleanOptional(input.availability),
       status: input.status ?? "TO_CONSIDER",
       notes: cleanOptional(input.notes),
-      autoTrack: input.autoTrack ?? true,
       storeId: store.id,
       categoryId: category.id,
       groupId: input.groupId ?? null,
-      lastCheckedAt: price !== null ? now : null,
-      lastCheckStatus: price !== null ? "SUCCESS" : "NEVER",
-      lastPriceCheckAt: price !== null ? now : null,
-      tags: tags.length ? { create: tagCreateData(userId, tags) } : undefined,
-      priceHistory:
-        price !== null
-          ? {
-              create: {
-                userId,
-                price: roundMoney(price),
-                originalPrice:
-                  input.originalPrice !== null && input.originalPrice !== undefined
-                    ? roundMoney(input.originalPrice)
-                    : null,
-                currency: input.currency ?? "PLN",
-                availability: cleanOptional(input.availability),
-                source: "MANUAL"
-              }
-            }
-          : undefined
+      tags: tags.length ? { create: tagCreateData(userId, tags) } : undefined
     },
     include: productInclude
   });
@@ -247,7 +225,6 @@ export async function updateProduct(userId: string, id: string, input: Partial<P
   if (input.availability !== undefined) data.availability = cleanOptional(input.availability);
   if (input.status !== undefined) data.status = input.status;
   if (input.notes !== undefined) data.notes = cleanOptional(input.notes);
-  if (input.autoTrack !== undefined) data.autoTrack = input.autoTrack;
   if (input.groupId !== undefined) {
     if (input.groupId) {
       const group = await prisma.productGroup.findFirst({ where: { id: input.groupId, userId } });
@@ -271,21 +248,11 @@ export async function updateProduct(userId: string, id: string, input: Partial<P
     data.store = { connect: { id: store.id } };
   }
 
-  let priceChanged = false;
-  let newPrice = existing.currentPrice;
   if (input.currentPrice !== undefined) {
-    newPrice = input.currentPrice === null ? null : roundMoney(input.currentPrice);
-    priceChanged = newPrice !== existing.currentPrice;
-    data.currentPrice = newPrice;
+    data.currentPrice = input.currentPrice === null ? null : roundMoney(input.currentPrice);
   }
   if (input.originalPrice !== undefined) {
     data.originalPrice = input.originalPrice === null ? null : roundMoney(input.originalPrice);
-  }
-  if (priceChanged) {
-    data.lastPriceCheckAt = new Date();
-    data.lastCheckedAt = new Date();
-    data.lastCheckStatus = "SUCCESS";
-    data.lastCheckError = null;
   }
 
   let previousTagIds: string[] = [];
@@ -306,25 +273,6 @@ export async function updateProduct(userId: string, id: string, input: Partial<P
     data,
     include: productInclude
   });
-
-  if (priceChanged && newPrice !== null) {
-    await prisma.priceHistory.create({
-      data: {
-        userId,
-        productId: id,
-        price: newPrice,
-        originalPrice:
-          input.originalPrice !== undefined
-            ? input.originalPrice === null
-              ? null
-              : roundMoney(input.originalPrice)
-            : existing.originalPrice,
-        currency: input.currency ?? existing.currency,
-        availability: input.availability !== undefined ? cleanOptional(input.availability) : existing.availability,
-        source: "MANUAL"
-      }
-    });
-  }
 
   if (oldImage && updated.imagePath !== oldImage) {
     const [stillUsed, stillUsedAnywhere] = await Promise.all([

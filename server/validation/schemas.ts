@@ -24,7 +24,6 @@ export const productCreateSchema = z.object({
   availability: optionalString(120),
   status: productStatusSchema.default("TO_CONSIDER"),
   notes: optionalString(5000),
-  autoTrack: z.boolean().default(true),
   storeName: optionalString(120),
   storeDomain: optionalString(255),
   categoryId: z.string().min(1).optional(),
@@ -44,7 +43,6 @@ export const productUpdateSchema = z.object({
   availability: optionalString(120),
   status: productStatusSchema.optional(),
   notes: optionalString(5000),
-  autoTrack: z.boolean().optional(),
   storeName: optionalString(120),
   storeDomain: optionalString(255),
   categoryId: z.string().min(1).optional(),
@@ -72,13 +70,6 @@ export const bulkActionSchema = z.discriminatedUnion("action", [
   })
 ]);
 
-export const priceUpdateSchema = z.object({
-  price: z.number().min(0).max(1_000_000_000),
-  originalPrice: z.number().min(0).max(1_000_000_000).nullable().optional(),
-  availability: z.string().trim().max(120).nullable().optional(),
-  currency: z.string().trim().length(3).toUpperCase().optional()
-});
-
 export const categoryCreateSchema = z.object({
   name: z.string().trim().min(1, "Category name is required.").max(40),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Choose a valid color.").default("#D9A3B0"),
@@ -89,8 +80,6 @@ export const categoryUpdateSchema = categoryCreateSchema.partial();
 
 export const settingsUpdateSchema = z.object({
   currency: z.string().trim().length(3).toUpperCase().optional(),
-  autoTrackingEnabled: z.boolean().optional(),
-  priceUpdateIntervalMinutes: z.number().int().min(15, "Use at least 15 minutes between checks.").max(10080).optional(),
   defaultProductView: z.enum(["grid", "list"]).optional(),
   budget: z.number().min(0).max(1_000_000_000).nullable().optional()
 });

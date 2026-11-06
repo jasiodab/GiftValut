@@ -8,8 +8,7 @@ async function loadProducts(userId: string) {
       category: true,
       store: true,
       group: true,
-      tags: { include: { tag: true } },
-      priceHistory: { orderBy: { recordedAt: "desc" }, take: 1 }
+      tags: { include: { tag: true } }
     }
   });
 }

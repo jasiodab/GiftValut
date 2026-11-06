@@ -4,14 +4,12 @@ import { prisma } from "../lib/prisma";
 import { asyncHandler, AppError } from "../lib/errors";
 import {
   bulkActionSchema,
-  priceUpdateSchema,
   productCreateSchema,
   productQuerySchema,
   productUpdateSchema
 } from "../validation/schemas";
 import { createProduct, deleteProduct, deleteProductsBulk, duplicateProductCheck, updateProduct } from "../services/products";
 import { productInclude, serializeProduct } from "../lib/serialize";
-import { refreshProductPrice } from "../services/priceTracking";
 import { requestUserId } from "../lib/requestUser";
 
 export const productsRouter = Router();
@@ -113,7 +111,6 @@ productsRouter.get(
       where: { id: req.params.id, userId: requestUserId(req) },
       include: {
         ...productInclude,
-        priceHistory: { where: { userId: (req as any).user.id }, orderBy: { recordedAt: "desc" } },
         group: {
           include: {
             products: {
@@ -128,29 +125,8 @@ productsRouter.get(
 
     if (!product) throw new AppError(404, "Product not found.", "PRODUCT_NOT_FOUND");
 
-    const history = product.priceHistory;
-    const prices = history.map((entry) => entry.price);
-    const current = product.currentPrice;
-    const previous = history.find((entry) => entry.price !== current)?.price ?? null;
-
     res.json({
       product: serializeProduct(product),
-      priceHistory: history,
-      priceStats: {
-        lowest: prices.length ? Math.min(...prices) : null,
-        highest: prices.length ? Math.max(...prices) : null,
-        average: prices.length
-          ? Math.round((prices.reduce((sum, price) => sum + price, 0) / prices.length) * 100) / 100
-          : null,
-        previous,
-        difference:
-          current !== null && previous !== null ? Math.round((current - previous) * 100) / 100 : null,
-        percentChange:
-          current !== null && previous !== null && previous !== 0
-            ? Math.round(((current - previous) / previous) * 10000) / 100
-            : null,
-        entries: history.length
-      },
       groupOffers:
         product.group?.products.map((offer) => ({
           id: offer.id,
@@ -161,7 +137,6 @@ productsRouter.get(
           currency: offer.currency,
           availability: offer.availability,
           imageUrl: offer.imagePath,
-          lastPriceCheckAt: offer.lastPriceCheckAt,
           store: offer.store
             ? { id: offer.store.id, name: offer.store.name, domain: offer.store.domain }
             : null,
@@ -177,28 +152,6 @@ productsRouter.patch(
     const payload = productUpdateSchema.parse(req.body);
     const product = await updateProduct(requestUserId(req), req.params.id, payload);
     res.json({ product });
-  })
-);
-
-productsRouter.post(
-  "/:id/refresh",
-  asyncHandler(async (req, res) => {
-    const result = await refreshProductPrice(requestUserId(req), req.params.id);
-    res.json(result);
-  })
-);
-
-productsRouter.post(
-  "/:id/price",
-  asyncHandler(async (req, res) => {
-    const payload = priceUpdateSchema.parse(req.body);
-    const result = await updateProduct(requestUserId(req), req.params.id, {
-      currentPrice: payload.price,
-      originalPrice: payload.originalPrice,
-      availability: payload.availability,
-      currency: payload.currency
-    });
-    res.json({ product: result, message: "Price added to history." });
   })
 );
 
