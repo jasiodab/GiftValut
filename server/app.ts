@@ -12,12 +12,12 @@ import { settingsRouter } from "./routes/settings";
 import { uploadsRouter } from "./routes/uploads";
 import { authRouter } from "./routes/auth";
 import { authMiddleware } from "./middleware/auth";
+import { requireAuth } from "./middleware/auth";
 import { createRateLimiter, getClientIp, userOrIpKey } from "./middleware/rateLimit";
 import { pricingRouter } from "./routes/pricing";
 import { prisma } from "./lib/prisma";
 import { ensureDataDirectories, ROOT_DIR, UPLOAD_DIR, absoluteUploadPath } from "./lib/paths";
 import { AppError, asyncHandler, errorHandler, notFoundHandler } from "./lib/errors";
-import { requireAuth } from "./middleware/auth";
 
 export function createApp() {
   ensureDataDirectories();
@@ -89,9 +89,12 @@ export function createApp() {
   app.use("/api/extract", extractLimiter);
   app.use("/api/pricing/products/:productId/search", priceSearchLimiter);
   app.use("/api", generalApiLimiter);
+  app.use("/api", (_req, res, next) => {
+    res.setHeader("Cache-Control", "no-store");
+    next();
+  });
   app.use("/api", (req, res, next) => {
     if (req.path.startsWith("/auth") || req.path === "/health") return next();
-    const { requireAuth } = require("./middleware/auth");
     return requireAuth(req, res, next);
   });
 
@@ -153,9 +156,25 @@ export function createApp() {
 
   const clientDist = path.join(ROOT_DIR, "client", "dist");
   if (fs.existsSync(clientDist)) {
-    app.use(express.static(clientDist, { maxAge: "1h" }));
+    // Hashed build assets never change, so they can be cached forever.
+    app.use(
+      "/assets",
+      express.static(path.join(clientDist, "assets"), { maxAge: "1y", immutable: true })
+    );
+    app.use(
+      express.static(clientDist, {
+        maxAge: "1h",
+        setHeaders: (res, filePath) => {
+          const basename = path.basename(filePath);
+          if (basename === "index.html" || basename === "sw.js" || basename === "manifest.webmanifest") {
+            res.setHeader("Cache-Control", "no-cache");
+          }
+        }
+      })
+    );
     app.get("*", (req, res, next) => {
       if (req.path.startsWith("/uploads/")) return next();
+      res.setHeader("Cache-Control", "no-cache");
       res.sendFile(path.join(clientDist, "index.html"));
     });
   }
