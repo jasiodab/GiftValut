@@ -22,7 +22,6 @@ type ProductInput = {
   storeName?: string | null;
   storeDomain?: string | null;
   categoryId?: string;
-  groupId?: string | null;
   tags?: string[];
 };
 
@@ -151,11 +150,6 @@ export async function createProduct(userId: string, input: ProductInput) {
   const imagePath = await assertOwnedImage(userId, normalizeImagePath(input.imagePath));
   const price = input.currentPrice ?? null;
 
-  if (input.groupId) {
-    const group = await prisma.productGroup.findFirst({ where: { id: input.groupId, userId } });
-    if (!group) throw new AppError(400, "The selected offer group no longer exists.", "INVALID_GROUP");
-  }
-
   const product = await prisma.product.create({
     data: {
       userId,
@@ -173,7 +167,6 @@ export async function createProduct(userId: string, input: ProductInput) {
       notes: cleanOptional(input.notes),
       storeId: store.id,
       categoryId: category.id,
-      groupId: input.groupId ?? null,
       tags: tags.length ? { create: tagCreateData(userId, tags) } : undefined
     },
     include: productInclude
@@ -225,13 +218,6 @@ export async function updateProduct(userId: string, id: string, input: Partial<P
   if (input.availability !== undefined) data.availability = cleanOptional(input.availability);
   if (input.status !== undefined) data.status = input.status;
   if (input.notes !== undefined) data.notes = cleanOptional(input.notes);
-  if (input.groupId !== undefined) {
-    if (input.groupId) {
-      const group = await prisma.productGroup.findFirst({ where: { id: input.groupId, userId } });
-      if (!group) throw new AppError(400, "The selected offer group no longer exists.", "INVALID_GROUP");
-    }
-    data.group = input.groupId ? { connect: { id: input.groupId } } : { disconnect: true };
-  }
 
   if (input.categoryId !== undefined) {
     const category = await resolveCategory(userId, input.categoryId);

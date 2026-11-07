@@ -35,7 +35,6 @@ try:
               "autoTrackingEnabled" BOOLEAN NOT NULL DEFAULT true,
               "priceUpdateIntervalMinutes" INTEGER NOT NULL DEFAULT 360,
               "defaultProductView" TEXT NOT NULL DEFAULT 'grid',
-              "budget" REAL,
               "lastBackupAt" DATETIME,
               "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               "updatedAt" DATETIME NOT NULL,
@@ -45,7 +44,7 @@ try:
         db.execute('''
             INSERT INTO "Settings_new"
             SELECT "id", "userId", "currency", "autoTrackingEnabled",
-                   "priceUpdateIntervalMinutes", "defaultProductView", "budget",
+                   "priceUpdateIntervalMinutes", "defaultProductView",
                    "lastBackupAt", "createdAt", "updatedAt"
             FROM "Settings"
         ''')

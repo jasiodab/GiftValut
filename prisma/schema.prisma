@@ -25,7 +25,6 @@ model Product {
   autoTrack        Boolean        @default(true)
   storeId          String?
   categoryId       String
-  groupId          String?
   lastCheckedAt    DateTime?
   lastCheckStatus  String         @default("NEVER")
   lastCheckError   String?
@@ -36,7 +35,6 @@ model Product {
   user          User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   store         Store?         @relation(fields: [storeId], references: [id], onDelete: SetNull)
   category      Category       @relation(fields: [categoryId], references: [id])
-  group         ProductGroup?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
   priceHistory  PriceHistory[]
   priceChecks   PriceCheck[]
   priceOffers   PriceOffer[]
@@ -45,7 +43,6 @@ model Product {
   @@index([status])
   @@index([categoryId])
   @@index([storeId])
-  @@index([groupId])
   @@index([createdAt])
   @@index([autoTrack, lastCheckedAt])
   @@index([userId])
@@ -98,16 +95,6 @@ model PriceHistory {
   @@index([productId, recordedAt])
 }
 
-model ProductGroup {
-  id        String    @id @default(cuid())
-  userId    String?
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  products  Product[]
-}
-
 model Tag {
   id        String       @id @default(cuid())
   userId    String?
@@ -135,7 +122,6 @@ model Settings {
   autoTrackingEnabled        Boolean  @default(true)
   priceUpdateIntervalMinutes Int      @default(360)
   defaultProductView         String   @default("grid")
-  budget                     Float?
   lastBackupAt               DateTime?
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
@@ -245,7 +231,6 @@ model User {
   stores       Store[]
   categories   Category[]
   tags         Tag[]
-  groups       ProductGroup[]
   priceChecks  PriceCheck[]
   priceOffers  PriceOffer[]
   priceHistory PriceHistory[]

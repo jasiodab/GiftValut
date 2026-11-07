@@ -27,7 +27,6 @@ export function serializeProduct(product: any) {
           icon: product.category.icon
         }
       : null,
-    group: product.group ? { id: product.group.id, name: product.group.name } : null,
     tags: (product.tags ?? []).map((productTag: any) => productTag.tag?.name ?? productTag.name).filter(Boolean),
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
@@ -43,6 +42,5 @@ export type SerializedProduct = ReturnType<typeof serializeProduct>;
 export const productInclude = {
   store: true,
   category: true,
-  group: true,
   tags: { include: { tag: true } }
 };

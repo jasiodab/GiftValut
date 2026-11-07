@@ -32,7 +32,6 @@ productsRouter.get(
 
     if (query.status !== "ALL") where.status = query.status;
     if (query.categoryId) where.categoryId = query.categoryId;
-    if (query.groupId) where.groupId = query.groupId;
     if (query.favorite === "true") where.status = "FAVORITE";
     if (query.search) {
       where.OR = [
@@ -109,40 +108,12 @@ productsRouter.get(
   asyncHandler(async (req, res) => {
     const product = await prisma.product.findUnique({
       where: { id: req.params.id, userId: requestUserId(req) },
-      include: {
-        ...productInclude,
-        group: {
-          include: {
-            products: {
-              where: { userId: (req as any).user.id },
-              include: { store: true, category: true, group: true },
-              orderBy: { currentPrice: "asc" }
-            }
-          }
-        }
-      }
+      include: productInclude
     });
 
     if (!product) throw new AppError(404, "Product not found.", "PRODUCT_NOT_FOUND");
 
-    res.json({
-      product: serializeProduct(product),
-      groupOffers:
-        product.group?.products.map((offer) => ({
-          id: offer.id,
-          name: offer.name,
-          url: offer.url,
-          currentPrice: offer.currentPrice,
-          originalPrice: offer.originalPrice,
-          currency: offer.currency,
-          availability: offer.availability,
-          imageUrl: offer.imagePath,
-          store: offer.store
-            ? { id: offer.store.id, name: offer.store.name, domain: offer.store.domain }
-            : null,
-          status: offer.status
-        })) ?? []
-    });
+    res.json({ product: serializeProduct(product) });
   })
 );
 

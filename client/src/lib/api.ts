@@ -1,8 +1,6 @@
 import type {
   AppMeta,
-  BudgetSummary,
   Category,
-  ComparisonGroup,
   DashboardData,
   ExtractionResult,
   Pagination,
@@ -92,7 +90,6 @@ export type ProductFilters = {
   search?: string;
   status?: ProductStatus | "ALL";
   categoryId?: string;
-  groupId?: string;
   favorite?: boolean;
   sort?: string;
   page?: number;
@@ -102,7 +99,6 @@ export type ProductFilters = {
 export const api = {
   meta: (signal?: AbortSignal) => request<AppMeta>("/meta", { signal }),
   dashboard: (signal?: AbortSignal) => request<DashboardData>("/dashboard", { signal }),
-  budget: (signal?: AbortSignal) => request<BudgetSummary>("/budget", { signal }),
 
   products: (filters: ProductFilters = {}, signal?: AbortSignal) =>
     request<ProductsResponse>(
@@ -110,7 +106,6 @@ export const api = {
         search: filters.search,
         status: filters.status,
         categoryId: filters.categoryId,
-        groupId: filters.groupId,
         favorite: filters.favorite,
         sort: filters.sort,
         page: filters.page,
@@ -140,25 +135,11 @@ export const api = {
   deleteCategory: (id: string) => request<{ deleted: boolean }>(`/categories/${id}`, { method: "DELETE" }),
   tags: (signal?: AbortSignal) => request<{ tags: Tag[] }>("/tags", { signal }),
 
-  groups: (signal?: AbortSignal) => request<{ groups: ComparisonGroup[] }>("/groups", { signal }),
-  createGroup: (body: { name: string; productIds: string[] }) =>
-    request<{ group: ComparisonGroup }>("/groups", { method: "POST", body }),
-  updateGroup: (id: string, body: { name: string }) =>
-    request<{ group: ComparisonGroup }>(`/groups/${id}`, { method: "PATCH", body }),
-  deleteGroup: (id: string) => request<{ deleted: boolean }>(`/groups/${id}`, { method: "DELETE" }),
-  addGroupOffer: (groupId: string, productId: string) =>
-    request<{ added: boolean }>(`/groups/${groupId}/offers`, {
-      method: "POST",
-      body: { productId }
-    }),
-  removeGroupOffer: (groupId: string, productId: string) =>
-    request<{ removed: boolean }>(`/groups/${groupId}/offers/${productId}`, { method: "DELETE" }),
-
   extract: (url: string, signal?: AbortSignal) =>
     request<ExtractionResult>("/extract", { method: "POST", body: { url }, signal }),
 
   settings: (signal?: AbortSignal) => request<SettingsResponse>("/settings", { signal }),
-  updateSettings: (body: Partial<Pick<Settings, "currency" | "defaultProductView" | "budget">>) =>
+  updateSettings: (body: Partial<Pick<Settings, "currency" | "defaultProductView">>) =>
     request<{ settings: Settings }>("/settings", { method: "PATCH", body }),
   restoreBackup: (file: File) => {
     const formData = new FormData();

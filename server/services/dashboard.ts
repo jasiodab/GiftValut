@@ -1,10 +1,10 @@
 import { prisma } from "../lib/prisma";
 import { productInclude, serializeProduct } from "../lib/serialize";
-import { getBudgetOverview } from "./budget";
 
 export async function getDashboardData(userId: string) {
-  const [statusGroups, totals, withPrice, storeCount, recentlyAddedRaw, favoritesRaw, budget, topCategories] =
+  const [settings, statusGroups, totals, withPrice, recentlyAddedRaw, favoritesRaw, topCategories] =
     await Promise.all([
+      prisma.settings.findUnique({ where: { userId }, select: { currency: true } }),
       prisma.product.groupBy({
         by: ["status"],
         where: { userId },
@@ -12,7 +12,6 @@ export async function getDashboardData(userId: string) {
       }),
       prisma.product.aggregate({ where: { userId }, _sum: { currentPrice: true } }),
       prisma.product.count({ where: { userId, currentPrice: { not: null } } }),
-      prisma.store.count({ where: { userId } }),
       prisma.product.findMany({
         where: { userId },
         include: productInclude,
@@ -25,7 +24,6 @@ export async function getDashboardData(userId: string) {
         orderBy: { createdAt: "desc" },
         take: 4
       }),
-      getBudgetOverview(userId),
       prisma.category.findMany({
         where: { userId },
         select: { id: true, name: true, color: true, _count: { select: { products: true } } },
@@ -38,14 +36,13 @@ export async function getDashboardData(userId: string) {
   const totalProducts = statusGroups.reduce((sum, entry) => sum + entry._count._all, 0);
 
   return {
-    currency: budget.currency,
+    currency: settings?.currency ?? "PLN",
     stats: {
       totalProducts,
       favorites: statusCounts.get("FAVORITE") ?? 0,
       toBuy: statusCounts.get("TO_BUY") ?? 0,
       purchased: statusCounts.get("PURCHASED") ?? 0,
       totalValue: Math.round((totals._sum.currentPrice ?? 0) * 100) / 100,
-      stores: storeCount,
       withPrice
     },
     recentlyAdded: recentlyAddedRaw.map(serializeProduct),
@@ -55,15 +52,6 @@ export async function getDashboardData(userId: string) {
       name: category.name,
       color: category.color,
       count: category._count.products
-    })),
-    budget: {
-      budget: budget.budget,
-      plannedTotal: budget.plannedTotal,
-      purchasedTotal: budget.purchasedTotal,
-      savedValue: budget.savedValue,
-      remaining: budget.remaining,
-      progress: budget.progress,
-      overBudget: budget.overBudget
-    }
+    }))
   };
 }

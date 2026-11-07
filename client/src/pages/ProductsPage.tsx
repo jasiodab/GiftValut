@@ -198,7 +198,7 @@ export function ProductsPage() {
               value={searchValue}
               onChange={(event) => setSearchValue(event.target.value)}
               placeholder="Search products, stores, notes or tags…"
-              className="h-9 border-border/80 bg-card pl-9 pr-9"
+              className="h-10 border-border/80 bg-card pl-9 pr-9"
             />
             {searchValue ? (
               <button
@@ -214,7 +214,7 @@ export function ProductsPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <Select value={status} onValueChange={(value) => updateFilter("status", value)}>
-              <SelectTrigger className="h-9 w-full min-w-[120px] sm:w-[138px] bg-card">
+              <SelectTrigger className="h-10 w-full min-w-[120px] sm:w-[138px] bg-card">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -228,7 +228,7 @@ export function ProductsPage() {
             </Select>
 
             <Select value={categoryId} onValueChange={(value) => updateFilter("categoryId", value)}>
-              <SelectTrigger className="h-9 w-full min-w-[120px] sm:w-[148px] bg-card">
+              <SelectTrigger className="h-10 w-full min-w-[120px] sm:w-[148px] bg-card">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -242,7 +242,7 @@ export function ProductsPage() {
             </Select>
 
             <Select value={sort} onValueChange={(value) => updateFilter("sort", value)}>
-              <SelectTrigger className="h-9 w-full min-w-[120px] sm:w-[160px] bg-card">
+              <SelectTrigger className="h-10 w-full min-w-[120px] sm:w-[160px] bg-card">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

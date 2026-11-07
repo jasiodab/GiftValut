@@ -47,7 +47,6 @@ authRouter.post("/bootstrap", asyncHandler(async (req, res) => {
   await prisma.product.updateMany({ where: { userId: null }, data: { userId: user.id } });
   await prisma.category.updateMany({ where: { userId: null }, data: { userId: user.id } });
   await prisma.tag.updateMany({ where: { userId: null }, data: { userId: user.id } });
-  await prisma.productGroup.updateMany({ where: { userId: null }, data: { userId: user.id } });
   await prisma.priceHistory.updateMany({ where: { userId: null }, data: { userId: user.id } });
   await prisma.priceOffer.updateMany({ where: { userId: null }, data: { userId: user.id } });
   await prisma.priceCheck.updateMany({ where: { userId: null }, data: { userId: user.id } });

@@ -27,7 +27,6 @@ export const productCreateSchema = z.object({
   storeName: optionalString(120),
   storeDomain: optionalString(255),
   categoryId: z.string().min(1).optional(),
-  groupId: z.string().min(1).nullable().optional(),
   tags: z.array(z.string().trim().min(1).max(40)).max(15).default([])
 });
 
@@ -46,7 +45,6 @@ export const productUpdateSchema = z.object({
   storeName: optionalString(120),
   storeDomain: optionalString(255),
   categoryId: z.string().min(1).optional(),
-  groupId: z.string().min(1).nullable().optional(),
   tags: z.array(z.string().trim().min(1).max(40)).max(15).optional()
 });
 
@@ -54,7 +52,6 @@ export const productQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
   status: z.union([productStatusSchema, z.literal("ALL")]).optional().default("ALL"),
   categoryId: z.string().optional(),
-  groupId: z.string().optional(),
   favorite: z.enum(["true", "false"]).optional(),
   sort: z.enum(["recent", "updated", "price-asc", "price-desc", "name"]).optional().default("recent"),
   page: z.coerce.number().int().min(1).optional().default(1),
@@ -80,21 +77,7 @@ export const categoryUpdateSchema = categoryCreateSchema.partial();
 
 export const settingsUpdateSchema = z.object({
   currency: z.string().trim().length(3).toUpperCase().optional(),
-  defaultProductView: z.enum(["grid", "list"]).optional(),
-  budget: z.number().min(0).max(1_000_000_000).nullable().optional()
-});
-
-export const groupCreateSchema = z.object({
-  name: z.string().trim().min(1, "Group name is required.").max(120),
-  productIds: z.array(z.string().min(1)).min(1, "Select at least one offer.").max(20)
-});
-
-export const groupUpdateSchema = z.object({
-  name: z.string().trim().min(1).max(120)
-});
-
-export const groupProductSchema = z.object({
-  productId: z.string().min(1)
+  defaultProductView: z.enum(["grid", "list"]).optional()
 });
 
 export const extractSchema = z.object({

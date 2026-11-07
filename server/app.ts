@@ -4,9 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { productsRouter } from "./routes/products";
 import { categoriesRouter, tagsRouter } from "./routes/categories";
-import { groupsRouter } from "./routes/groups";
 import { dashboardRouter } from "./routes/dashboard";
-import { budgetRouter } from "./routes/budget";
 import { extractRouter } from "./routes/extract";
 import { settingsRouter } from "./routes/settings";
 import { uploadsRouter } from "./routes/uploads";
@@ -55,8 +53,8 @@ export function createApp() {
   });
 
   const loginLimiter = createRateLimiter({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
+    windowMs: 60 * 1000,
+    max: 10,
     keyPrefix: "login",
     keyGenerator: (req) => getClientIp(req)
   });
@@ -134,8 +132,6 @@ export function createApp() {
   app.use("/api/products", productsRouter);
   app.use("/api/categories", categoriesRouter);
   app.use("/api/tags", tagsRouter);
-  app.use("/api/groups", groupsRouter);
-  app.use("/api/budget", budgetRouter);
   app.use("/api/extract", extractRouter);
   app.use("/api/settings", settingsRouter);
   app.use("/api/uploads", uploadsRouter);

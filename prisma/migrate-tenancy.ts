@@ -12,7 +12,6 @@ async function main() {
     prisma.product.updateMany({ where: { userId: null }, data: { userId: owner.id } }),
     prisma.category.updateMany({ where: { userId: null }, data: { userId: owner.id } }),
     prisma.tag.updateMany({ where: { userId: null }, data: { userId: owner.id } }),
-    prisma.productGroup.updateMany({ where: { userId: null }, data: { userId: owner.id } }),
     prisma.settings.updateMany({ where: { userId: null }, data: { userId: owner.id } })
   ]);
 

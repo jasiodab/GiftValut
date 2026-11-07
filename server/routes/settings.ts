@@ -26,10 +26,10 @@ settingsRouter.get("/", asyncHandler(async (req, res) => {
   const userId = requestUserId(req);
   const isOwner = (req as any).user.role === "OWNER";
   const settings = await getSettings(userId);
-  const [productCount, categoryCount, storeCount, groupCount, tagCount, ownedUploads] = await Promise.all([
+  const [productCount, categoryCount, storeCount, tagCount, ownedUploads] = await Promise.all([
     prisma.product.count({ where: { userId } }), prisma.category.count({ where: { userId } }),
     prisma.store.count({ where: { userId } }),
-    prisma.productGroup.count({ where: { userId } }), prisma.tag.count({ where: { userId } }),
+    prisma.tag.count({ where: { userId } }),
     prisma.upload.findMany({ where: { userId }, select: { filename: true } })
   ]);
   const backups = isOwner ? await listBackups() : [];
@@ -45,7 +45,7 @@ settingsRouter.get("/", asyncHandler(async (req, res) => {
       uploadsPath: isOwner ? "data/uploads" : "",
       uploadsSize: imagesSize,
       counts: { products: productCount, categories: categoryCount, stores: storeCount,
-        groups: groupCount, tags: tagCount }
+        tags: tagCount }
     },
     backups,
     app: { name: "Gift Vault", version: "1.0.0", runtime: `Node.js ${process.version}`,

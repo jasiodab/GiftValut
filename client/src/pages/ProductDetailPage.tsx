@@ -42,7 +42,7 @@ import { useProduct } from "@/lib/queries";
 import { useToggleFavorite } from "@/hooks/useProductActions";
 import { invalidateVaultData } from "@/lib/invalidate";
 import { formatDate, formatMoney } from "@/lib/format";
-import type { GroupOffer, Product } from "@/lib/types";
+import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function ProductDetailPage() {
@@ -58,7 +58,6 @@ export function ProductDetailPage() {
   const [notesDraft, setNotesDraft] = useState("");
 
   const product = data?.product;
-  const groupOffers = data?.groupOffers ?? [];
 
   useEffect(() => {
     setNotesDraft(product?.notes ?? "");
@@ -140,14 +139,6 @@ export function ProductDetailPage() {
 
   const isFavorite = product.status === "FAVORITE";
   const notesDirty = notesDraft !== (product.notes ?? "");
-  const cheapestOfferId = groupOffers.reduce<string | null>((best, offer) => {
-    if (offer.currentPrice === null) return best;
-    const bestOffer = groupOffers.find((item) => item.id === best);
-    if (!bestOffer || bestOffer.currentPrice === null || offer.currentPrice < bestOffer.currentPrice) {
-      return offer.id;
-    }
-    return best;
-  }, null);
 
   return (
     <div className="space-y-6">
@@ -422,58 +413,8 @@ export function ProductDetailPage() {
             </div>
           </Card>
 
-          <Card>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
-              <div>
-                <h2 className="text-sm font-semibold">{product.group ? "Compare offers" : "One gift, several stores"}</h2>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {product.group
-                    ? `${product.group.name} · ${groupOffers.length} ${groupOffers.length === 1 ? "offer" : "offers"}`
-                    : "Group the same product from different stores. Nothing is grouped without your confirmation."}
-                </p>
-              </div>
-              <Button asChild variant="outline" size="sm">
-                <Link to="/comparison">
-                  {product.group ? "Manage group" : "Open comparison"} <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </Button>
-            </div>
-
-            {product.group && groupOffers.length ? (
-              <div className="divide-y divide-border/70 px-2 py-1">
-                {groupOffers.map((offer) => (
-                  <GroupOfferRow
-                    key={offer.id}
-                    offer={offer}
-                    current={offer.id === product.id}
-                    cheapest={offer.id === cheapestOfferId}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="p-5">
-                <div className="flex flex-col items-start justify-between gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-card text-primary shadow-sm">
-                      <Layers className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium">Is this gift available elsewhere?</p>
-                      <p className="mt-0.5 max-w-md text-[11px] leading-relaxed text-muted-foreground">
-                        Add another product link to this comparison and the budget will count the cheapest option only.
-                      </p>
-                    </div>
-                  </div>
-                  <Button asChild size="sm">
-                    <Link to={`/comparison?product=${product.id}&create=1`}>
-                      <Plus className="h-3.5 w-3.5" /> Create group
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Card>
         </div>
+
       </div>
 
       <ProductFormDialog
@@ -513,56 +454,6 @@ function DetailRow({
       <span className="w-24 shrink-0 text-muted-foreground">{label}</span>
       <div className="min-w-0 flex-1 text-foreground">{children}</div>
     </div>
-  );
-}
-
-function GroupOfferRow({
-  offer,
-  current,
-  cheapest
-}: {
-  offer: GroupOffer;
-  current: boolean;
-  cheapest: boolean;
-}) {
-  return (
-    <Link
-      to={`/products/${offer.id}`}
-      className={cn(
-        "group flex items-center gap-3 rounded-lg px-3 py-3 transition-colors",
-        cheapest ? "bg-success/10" : "hover:bg-secondary/50",
-        current && "ring-1 ring-inset ring-primary/15"
-      )}
-    >
-      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border/60">
-        <ProductImage src={offer.imageUrl} alt={offer.name} iconClassName="h-3.5 w-3.5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <p className="truncate text-xs font-medium">{offer.name}</p>
-          {current ? (
-            <Badge variant="secondary" className="px-1.5 py-0 text-[9px]">
-              This product
-            </Badge>
-          ) : null}
-          {cheapest ? (
-            <Badge variant="success" className="gap-1 px-1.5 py-0 text-[9px]">
-              <Sparkles className="h-2.5 w-2.5" /> Cheapest
-            </Badge>
-          ) : null}
-        </div>
-        <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{offer.store?.name ?? "Store"}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="text-right">
-          <p className={cn("text-sm font-semibold", cheapest && "text-success")}>
-            {formatMoney(offer.currentPrice, offer.currency)}
-          </p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">{offer.availability ?? "No availability"}</p>
-        </div>
-        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/60 transition-colors group-hover:text-foreground" />
-      </div>
-    </Link>
   );
 }
 

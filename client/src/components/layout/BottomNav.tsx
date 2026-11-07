@@ -1,12 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { Home, Plus, ShoppingBag, Settings as SettingsIcon, Wallet } from "lucide-react";
+import { Home, Plus, ShoppingBag, Settings as SettingsIcon, Tags } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuickAdd } from "@/contexts/QuickAddContext";
 
 const items = [
   { to: "/", label: "Home", icon: Home, end: true },
   { to: "/products", label: "Products", icon: ShoppingBag },
-  { to: "/budget", label: "Budget", icon: Wallet },
+  { to: "/categories", label: "Categories", icon: Tags },
   { to: "/settings", label: "Settings", icon: SettingsIcon }
 ];
 
@@ -25,7 +25,7 @@ export function BottomNav() {
             end={item.end}
             className={({ isActive }) =>
               cn(
-                "flex min-h-[52px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1 text-[11px] font-medium",
+                "flex min-h-[56px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium",
                 isActive ? "text-primary" : "text-muted-foreground"
               )
             }
@@ -48,7 +48,7 @@ export function BottomNav() {
             to={item.to}
             className={({ isActive }) =>
               cn(
-                "flex min-h-[52px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1 text-[11px] font-medium",
+                "flex min-h-[56px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium",
                 isActive ? "text-primary" : "text-muted-foreground"
               )
             }

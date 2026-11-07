@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   ArrowUpRight,
-  ChartNoAxesColumnIncreasing,
   FolderHeart,
   Gift,
   LayoutDashboard,
@@ -12,7 +11,6 @@ import {
   ShoppingBag,
   Tags,
   Vault,
-  Wallet,
   X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,11 +24,6 @@ const primaryNav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/products", label: "All Products", icon: ShoppingBag, badge: true },
   { to: "/categories", label: "Categories", icon: Tags }
-];
-
-const planningNav = [
-  { to: "/comparison", label: "Price Comparison", icon: ChartNoAxesColumnIncreasing },
-  { to: "/budget", label: "Budget", icon: Wallet }
 ];
 
 type SidebarProps = {
@@ -125,21 +118,6 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                   icon={item.icon}
                   end={item.end}
                   badge={item.badge ? meta?.productCount : undefined}
-                  onNavigate={onCloseMobile}
-                />
-              ))}
-            </div>
-
-            <p className="px-3 pb-2 pt-6 text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Planning
-            </p>
-            <div className="space-y-0.5">
-              {planningNav.map((item) => (
-                <NavItem
-                  key={item.to}
-                  to={item.to}
-                  label={item.label}
-                  icon={item.icon}
                   onNavigate={onCloseMobile}
                 />
               ))}
@@ -275,16 +253,16 @@ export function MobileHeader({ onOpen }: { onOpen: () => void }) {
         <button
           type="button"
           onClick={onOpen}
-          className="-ml-1 flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm"
+          className="-ml-1 flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm"
           aria-label="Open navigation"
         >
-          <Menu className="h-[18px] w-[18px]" />
+          <Menu className="h-5 w-5" />
         </button>
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Vault className="h-3.5 w-3.5" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Vault className="h-4 w-4" />
           </div>
-          <span className="font-display text-lg font-semibold">Gift Vault</span>
+          <span className="font-display text-xl font-semibold">Gift Vault</span>
         </div>
       </div>
     </div>

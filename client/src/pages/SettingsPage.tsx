@@ -36,7 +36,6 @@ import { useSettings } from "@/lib/queries";
 import { invalidateVaultData } from "@/lib/invalidate";
 import { CURRENCIES } from "@/lib/constants";
 import { formatBytes, formatDateTime, timeAgo } from "@/lib/format";
-import { parsePriceString } from "@/lib/parse";
 import type { BackupFile } from "@/lib/types";
 
 export function SettingsPage() {
@@ -46,7 +45,6 @@ export function SettingsPage() {
 
   const [currency, setCurrency] = useState("PLN");
   const [defaultView, setDefaultView] = useState<"grid" | "list">("grid");
-  const [budgetDraft, setBudgetDraft] = useState("");
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
@@ -57,11 +55,10 @@ export function SettingsPage() {
     if (!data) return;
     setCurrency(data.settings.currency);
     setDefaultView(data.settings.defaultProductView);
-    setBudgetDraft(data.settings.budget !== null ? String(data.settings.budget) : "");
-  }, [data?.settings.id, data?.settings.currency, data?.settings.defaultProductView, data?.settings.budget]);
+  }, [data?.settings.id, data?.settings.currency, data?.settings.defaultProductView]);
 
   const preferencesMutation = useMutation({
-    mutationFn: (body: { currency: string; defaultProductView: "grid" | "list"; budget: number | null }) =>
+    mutationFn: (body: { currency: string; defaultProductView: "grid" | "list" }) =>
       api.updateSettings(body),
     onSuccess: async () => {
       toast.success("Preferences saved");
@@ -109,16 +106,7 @@ export function SettingsPage() {
   });
 
   const savePreferences = () => {
-    let budget: number | null = null;
-    if (budgetDraft.trim()) {
-      const parsed = parsePriceString(budgetDraft);
-      if (parsed === null || parsed < 0) {
-        toast.error("Enter a valid budget amount.");
-        return;
-      }
-      budget = parsed;
-    }
-    preferencesMutation.mutate({ currency, defaultProductView: defaultView, budget });
+    preferencesMutation.mutate({ currency, defaultProductView: defaultView });
   };
 
   const downloadExisting = async (backup: BackupFile) => {
@@ -206,19 +194,6 @@ export function SettingsPage() {
                     </Select>
                     <p className="text-[10px] text-muted-foreground">A saved view choice overrides this.</p>
                   </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="settings-budget">Season budget ({currency})</Label>
-                  <Input
-                    id="settings-budget"
-                    inputMode="decimal"
-                    value={budgetDraft}
-                    onChange={(event) => setBudgetDraft(event.target.value)}
-                    placeholder="Leave empty for no budget"
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Also editable from the Budget page. Grouped offers count once.
-                  </p>
                 </div>
                 <div className="flex justify-end">
                   <Button onClick={savePreferences} loading={preferencesMutation.isPending}>
@@ -366,7 +341,6 @@ export function SettingsPage() {
                   <CountFact label="Products" value={database?.counts.products ?? 0} />
                   <CountFact label="Categories" value={database?.counts.categories ?? 0} />
                   <CountFact label="Stores" value={database?.counts.stores ?? 0} />
-                  <CountFact label="Groups" value={database?.counts.groups ?? 0} />
                   <CountFact label="Tags" value={database?.counts.tags ?? 0} />
                 </div>
               </div>

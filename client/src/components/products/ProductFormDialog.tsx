@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
-import { useCategories, useGroups, useSettings, useTags } from "@/lib/queries";
+import { useCategories, useSettings, useTags } from "@/lib/queries";
 import { invalidateVaultData } from "@/lib/invalidate";
 import { CURRENCIES, STATUS_OPTIONS } from "@/lib/constants";
 import type { ExtractionData, Product, ProductInput, ProductStatus } from "@/lib/types";
@@ -67,7 +67,6 @@ type FormState = {
   notes: string;
   storeName: string;
   storeDomain: string;
-  groupId: string;
   tags: string[];
 };
 
@@ -86,7 +85,6 @@ const emptyForm = (currency: string): FormState => ({
   notes: "",
   storeName: "",
   storeDomain: "",
-  groupId: "",
   tags: []
 });
 
@@ -106,7 +104,6 @@ function formFromProduct(product: Product): FormState {
     notes: product.notes ?? "",
     storeName: product.store?.name ?? "",
     storeDomain: product.store?.domain ?? "",
-    groupId: product.group?.id ?? "",
     tags: product.tags
   };
 }
@@ -122,10 +119,8 @@ export function ProductFormDialog({
   const isEditing = Boolean(product);
   const { data: categoriesData } = useCategories();
   const { data: tagsData } = useTags();
-  const { data: groupsData } = useGroups();
   const { data: settingsData } = useSettings();
   const categories = categoriesData?.categories ?? [];
-  const groups = groupsData?.groups ?? [];
   const knownTags = tagsData?.tags ?? [];
 
   const [form, setForm] = useState<FormState>(emptyForm("PLN"));
@@ -380,7 +375,6 @@ export function ProductFormDialog({
       notes: form.notes.trim() || null,
       storeName: form.storeName.trim() || null,
       storeDomain: form.storeDomain.trim() || null,
-      groupId: form.groupId || null,
       tags: form.tags
     };
     saveMutation.mutate(payload);
@@ -726,25 +720,6 @@ export function ProductFormDialog({
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label>Comparison group</Label>
-                      <Select
-                        value={form.groupId || "none"}
-                        onValueChange={(value) => update("groupId", value === "none" ? "" : value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Not grouped" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Not grouped</SelectItem>
-                          {groups.map((group) => (
-                            <SelectItem key={group.id} value={group.id}>
-                              {group.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
 
                   <div className="mt-4 space-y-1.5">

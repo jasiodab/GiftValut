@@ -16,11 +16,6 @@ export type CategoryRef = {
   icon: string;
 };
 
-export type GroupRef = {
-  id: string;
-  name: string;
-};
-
 export type Product = {
   id: string;
   name: string;
@@ -37,7 +32,6 @@ export type Product = {
   notes: string | null;
   store: StoreRef | null;
   category: CategoryRef | null;
-  group: GroupRef | null;
   tags: string[];
   createdAt: string;
   updatedAt: string;
@@ -59,22 +53,8 @@ export type Tag = {
   count: number;
 };
 
-export type GroupOffer = {
-  id: string;
-  name: string;
-  url: string;
-  currentPrice: number | null;
-  originalPrice: number | null;
-  currency: string;
-  availability: string | null;
-  imageUrl: string | null;
-  store: StoreRef | null;
-  status: ProductStatus;
-};
-
 export type ProductDetailResponse = {
   product: Product;
-  groupOffers: GroupOffer[];
 };
 
 export type Pagination = {
@@ -89,19 +69,6 @@ export type ProductsResponse = {
   pagination: Pagination;
 };
 
-export type ComparisonOffer = Product & {
-  cheapestOfferId?: never;
-};
-
-export type ComparisonGroup = {
-  id: string;
-  name: string;
-  createdAt: string;
-  updatedAt: string;
-  offers: Product[];
-  cheapestOfferId: string | null;
-};
-
 export type DashboardData = {
   currency: string;
   stats: {
@@ -110,54 +77,17 @@ export type DashboardData = {
     toBuy: number;
     purchased: number;
     totalValue: number;
-    stores: number;
     withPrice: number;
   };
   recentlyAdded: Product[];
   favorites: Product[];
   categorySummary: Array<{ id: string; name: string; color: string; count: number }>;
-  budget: {
-    budget: number | null;
-    plannedTotal: number;
-    purchasedTotal: number;
-    savedValue: number;
-    remaining: number | null;
-    progress: number;
-    overBudget: boolean;
-  };
-};
-
-export type BudgetItem = Product;
-
-export type BudgetSummary = {
-  currency: string;
-  budget: number | null;
-  savedValue: number;
-  plannedTotal: number;
-  purchasedTotal: number;
-  committed: number;
-  remaining: number | null;
-  progress: number;
-  overBudget: boolean;
-  plannedItems: BudgetItem[];
-  purchasedItems: BudgetItem[];
-  unpricedPlanned: number;
-  unpricedPurchased: number;
-  categoryBreakdown: Array<{
-    id: string;
-    name: string;
-    color: string;
-    planned: number;
-    purchased: number;
-    total: number;
-  }>;
 };
 
 export type Settings = {
   id: number;
   currency: string;
   defaultProductView: "grid" | "list";
-  budget: number | null;
   lastBackupAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -181,7 +111,6 @@ export type SettingsResponse = {
       products: number;
       categories: number;
       stores: number;
-      groups: number;
       tags: number;
     };
   };
@@ -241,6 +170,5 @@ export type ProductInput = {
   storeName: string | null;
   storeDomain: string | null;
   categoryId: string;
-  groupId: string | null;
   tags: string[];
 };

@@ -15,19 +15,17 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ProductImage } from "@/components/products/ProductImage";
 import { StatusBadge } from "@/components/products/StatusBadge";
-import { useDashboard, useMeta } from "@/lib/queries";
+import { useDashboard } from "@/lib/queries";
 import { useQuickAdd } from "@/contexts/QuickAddContext";
-import { formatCompactMoney, formatDate, formatDateTime, formatMoney, timeAgo } from "@/lib/format";
+import { formatCompactMoney, formatDate, formatMoney, timeAgo } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
 export function DashboardPage() {
   const { data, isLoading, isError, refetch } = useDashboard();
-  const { data: meta } = useMeta();
   const { openQuickAdd } = useQuickAdd();
 
   const today = new Intl.DateTimeFormat("en-GB", {
@@ -177,80 +175,6 @@ export function DashboardPage() {
               )}
             </Card>
 
-            <Card className="flex flex-col xl:col-span-4">
-              <div className="flex items-center justify-between border-b border-border/70 px-4 py-3.5 sm:px-5 sm:py-4">
-                <div>
-                  <h2 className="text-sm font-semibold">Budget overview</h2>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">Planned and completed spending</p>
-                </div>
-                <Link
-                  to="/budget"
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                  aria-label="Open budget"
-                >
-                  <ArrowUpRight className="h-4 w-4" />
-                </Link>
-              </div>
-              <div className="flex flex-1 flex-col p-4 sm:p-5">
-                {data.budget.budget === null ? (
-                  <div className="flex flex-1 flex-col justify-between">
-                    <div>
-                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-                        <Wallet className="h-5 w-5" />
-                      </div>
-                      <h3 className="text-sm font-medium">Set a thoughtful budget</h3>
-                      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                        Track planned purchases and actual spending without double-counting alternative offers.
-                      </p>
-                    </div>
-                    <Button asChild variant="outline" size="sm" className="mt-5 w-full">
-                      <Link to="/budget">Set budget</Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                          Remaining
-                        </p>
-                        <p
-                          className={`mt-1 font-display text-[28px] font-semibold tracking-[-0.03em] ${
-                            data.budget.overBudget ? "text-destructive" : "text-foreground"
-                          }`}
-                        >
-                          {formatMoney(data.budget.remaining, data.currency)}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-medium text-muted-foreground">
-                        {data.budget.progress.toFixed(0)}% used
-                      </span>
-                    </div>
-                    <Progress
-                      value={data.budget.progress}
-                      className="mt-4 h-2"
-                      indicatorClassName={data.budget.overBudget ? "bg-destructive" : "bg-primary"}
-                    />
-                    <div className="mt-5 space-y-3 text-xs">
-                      <BudgetRow label="Total budget" value={formatMoney(data.budget.budget, data.currency)} />
-                      <BudgetRow label="To buy" value={formatMoney(data.budget.plannedTotal, data.currency)} />
-                      <BudgetRow label="Purchased" value={formatMoney(data.budget.purchasedTotal, data.currency)} />
-                    </div>
-                    <div className="mt-auto pt-5">
-                      <Link
-                        to="/budget"
-                        className="flex items-center justify-between rounded-lg border border-border/80 bg-card px-3 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        <span>Saved product value</span>
-                        <span className="font-semibold text-foreground">
-                          {formatMoney(data.budget.savedValue, data.currency)}
-                        </span>
-                      </Link>
-                    </div>
-                  </>
-                )}
-              </div>
-            </Card>
           </section>
 
           <section className="grid grid-cols-1 gap-5 xl:grid-cols-12">
@@ -327,32 +251,6 @@ export function DashboardPage() {
                     Categories will appear once you save products.
                   </p>
                 )}
-              </div>
-            </Card>
-            <Card className="xl:col-span-4">
-              <div className="border-b border-border/70 px-4 py-3.5 sm:px-5 sm:py-4">
-                <h2 className="text-sm font-semibold">Vault details</h2>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">A quick look at this collection</p>
-              </div>
-              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-b-xl bg-border/70">
-                <VaultFact label="Stores" value={String(data.stats.stores)} />
-                <VaultFact label="With prices" value={String(data.stats.withPrice)} />
-                <VaultFact label="Purchased value" value={formatCompactMoney(data.budget.purchasedTotal, data.currency)} />
-              </div>
-              <div className="p-4 sm:p-5">
-                <div className="rounded-lg border border-border/80 bg-card p-3">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                    Last backup
-                  </p>
-                  <p className="mt-1 text-xs font-medium">
-                    {meta?.lastBackupAt ? formatDateTime(meta.lastBackupAt) : "No backup yet"}
-                  </p>
-                  <Button asChild variant="ghost" size="sm" className="mt-1 h-7 px-0 text-[11px]">
-                    <Link to="/settings">
-                      {meta?.lastBackupAt ? "Manage backups" : "Create a backup"} <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  </Button>
-                </div>
               </div>
             </Card>
           </section>
@@ -477,24 +375,6 @@ function SectionHeading({
       >
         <ArrowUpRight className="h-4 w-4" />
       </Link>
-    </div>
-  );
-}
-
-function BudgetRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
-    </div>
-  );
-}
-
-function VaultFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-card p-4">
-      <p className="text-[9px] font-medium uppercase tracking-[0.13em] text-muted-foreground">{label}</p>
-      <p className="mt-1.5 font-display text-lg font-semibold">{value}</p>
     </div>
   );
 }

@@ -4,13 +4,11 @@ import { api, type ProductFilters } from "./api";
 export const queryKeys = {
   meta: ["meta"] as const,
   dashboard: ["dashboard"] as const,
-  budget: ["budget"] as const,
   products: (filters: ProductFilters) => ["products", filters] as const,
   allProducts: ["products"] as const,
   product: (id: string) => ["product", id] as const,
   categories: ["categories"] as const,
   tags: ["tags"] as const,
-  groups: ["groups"] as const,
   settings: ["settings"] as const
 };
 
@@ -27,10 +25,6 @@ export function useDashboard() {
     queryKey: queryKeys.dashboard,
     queryFn: ({ signal }) => api.dashboard(signal)
   });
-}
-
-export function useBudget() {
-  return useQuery({ queryKey: queryKeys.budget, queryFn: ({ signal }) => api.budget(signal) });
 }
 
 export function useProducts(filters: ProductFilters) {
@@ -55,10 +49,6 @@ export function useCategories() {
 
 export function useTags() {
   return useQuery({ queryKey: queryKeys.tags, queryFn: ({ signal }) => api.tags(signal) });
-}
-
-export function useGroups() {
-  return useQuery({ queryKey: queryKeys.groups, queryFn: ({ signal }) => api.groups(signal) });
 }
 
 export function useSettings() {
