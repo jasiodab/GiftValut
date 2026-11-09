@@ -64,11 +64,14 @@
   }
 
   const modal = document.getElementById('productModal');
+  const modalBody = document.getElementById('pfBody');
+  const modalFooter = document.getElementById('pfFooter');
   let categories = [];
   let settings = { currency: 'PLN' };
   let extracting = false;
   let saving = false;
   let uploading = false;
+  let currentStep = 'link'; // 'link' | 'details' | 'summary'
   let form = null;
 
   function openModal() { if (modal) modal.classList.add('open'); }
@@ -115,9 +118,33 @@
     finally { uploading = false; renderForm(); }
   }
 
-  function renderForm() {
-    const body = document.getElementById('pfBody');
-    if (!body) return;
+  function wizardStepHTML() {
+    const steps = [
+      { id: 'link', label: '1', title: 'Product link', hint: 'Paste a store link' },
+      { id: 'details', label: '2', title: 'Details', hint: 'Name, price and image' },
+      { id: 'summary', label: '3', title: 'Save', hint: 'Category, tags and notes' }
+    ];
+    let html = '<div class="wizard-steps">';
+    steps.forEach(function (s, i) {
+      const isActive = currentStep === s.id;
+      const isCompleted = ['link', 'details', 'summary'].indexOf(currentStep) > i;
+      html += '<span class="wizard-step ' + (isCompleted ? 'completed' : '') + (isActive ? ' active' : '') + '" aria-current="' + (isActive ? 'step' : 'false') + '">';
+      if (isCompleted) {
+        html += '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      } else {
+        html += s.label;
+      }
+      html += '</span>';
+      if (i < steps.length - 1) {
+        html += '<svg class="wizard-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+        html += '<span class="wizard-label">' + s.title + '</span>';
+      }
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function stepOptionHTML() {
     const catOpts = categories.map(function (c) {
       return '<option value="' + esc(c.id) + '"' + (form.categoryId === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>';
     }).join('');
@@ -128,57 +155,96 @@
       {v:'TO_CONSIDER',l:'To consider'},{v:'FAVORITE',l:'Favorite'},
       {v:'TO_BUY',l:'To buy'},{v:'PURCHASED',l:'Purchased'}
     ].map(function (s){ return '<option value="'+s.v+'"'+(form.status===s.v?' selected':'')+'>'+s.l+'</option>'; }).join('');
+    return { catOpts: catOpts, currOpts: currOpts, statusOpts: statusOpts };
+  }
 
-    body.innerHTML = ''
-      // Step 1: link
-      + '<section class="url-panel">'
-      +   '<div class="section-title">1. Product link</div>'
-      +   '<label class="label" for="pf-url">Paste a store link</label>'
-      +   '<div class="url-row">'
-      +     '<input class="input" id="pf-url" type="url" placeholder="https://store.com/product/..." value="' + esc(form.url) + '">'
-      +     '<button class="btn btn-sm" type="button" id="pf-import" ' + (extracting ? 'disabled' : '') + '>' + (extracting ? 'Reading…' : 'Import') + '</button>'
+  function renderForm() {
+    if (!modalBody) return;
+    const opts = stepOptionHTML();
+
+    modalBody.innerHTML = ''
+      // Step 1: Link
+      + '<section class="form-step ' + (currentStep === 'link' ? 'active' : '') + '" aria-labelledby="step-link">'
+      +   '<h2 id="step-link" class="sr-only">Product link</h2>'
+      +   '<div class="url-panel">'
+      +     '<label class="label" for="pf-url">Paste a store link</label>'
+      +     '<div class="url-row">'
+      +       '<input class="input" id="pf-url" type="url" placeholder="https://store.com/product/..." value="' + esc(form.url) + '">'
+      +       '<button class="btn btn-sm" type="button" id="pf-import" ' + (extracting ? 'disabled' : '') + '>' + (extracting ? 'Reading…' : 'Import details') + '</button>'
+      +     '</div>'
+      +     '<p class="hint">We’ll try to read the page and fill in the details automatically. You can always enter them by hand.</p>'
+      +     '<div id="pf-extraction"></div>'
+      +     '<div id="pf-duplicate"></div>'
       +   '</div>'
-      +   '<p class="hint">We’ll try to read the page and fill in the details automatically.</p>'
-      +   '<div id="pf-extraction"></div>'
-      +   '<div id="pf-duplicate"></div>'
       + '</section>'
-      // Step 2: image + basic
-      + '<section class="product-form-main">'
-      +   '<div>'
-      +     '<label class="label">Image</label>'
-      +     '<div class="image-upload" id="pf-imageBox">'
-      +       (form.imagePath ? '<img src="' + esc(productImageUrl(form.imagePath)) + '" alt="preview" style="width:100%;height:100%;object-fit:cover">' : '<div class="product-image-empty"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-image"></use></svg><span>No image</span></div>')
-      +       (uploading ? '<div class="image-upload-loading"><span class="spinner"></span></div>' : '')
+
+      // Step 2: Details
+      + '<section class="form-step ' + (currentStep === 'details' ? 'active' : '') + '" aria-labelledby="step-details">'
+      +   '<h2 id="step-details" class="sr-only">Product details</h2>'
+      +   '<div class="product-form-main">'
+      +     '<div>'
+      +       '<label class="label">Image</label>'
+      +       '<div class="image-upload" id="pf-imageBox">'
+      +         (form.imagePath ? '<img src="' + esc(productImageUrl(form.imagePath)) + '" alt="preview" style="width:100%;height:100%;object-fit:cover">' : '<div class="product-image-empty"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-image"></use></svg><span>No image</span></div>')
+      +         (uploading ? '<div class="image-upload-loading"><span class="spinner"></span></div>' : '')
+      +       '</div>'
+      +       '<input type="file" id="pf-file" accept="image/*" style="display:none">'
+      +       '<div style="display:flex;gap:8px;margin-top:8px">'
+      +         '<button class="btn btn-outline btn-sm" type="button" id="pf-uploadBtn">' + (uploading ? 'Uploading…' : 'Upload image') + '</button>'
+      +         (form.imagePath ? '<button class="btn btn-ghost btn-sm" type="button" id="pf-removeImg">Remove</button>' : '')
+      +       '</div>'
+      +       '<input type="hidden" id="pf-imagePath" value="' + esc(form.imagePath) + '">'
       +     '</div>'
-      +     '<input type="file" id="pf-file" accept="image/*" style="display:none">'
-      +     '<div style="display:flex;gap:8px;margin-top:8px">'
-      +       '<button class="btn btn-outline btn-sm" type="button" id="pf-uploadBtn">' + (uploading ? 'Uploading…' : 'Upload image') + '</button>'
-      +       (form.imagePath ? '<button class="btn btn-ghost btn-sm" type="button" id="pf-removeImg">Remove</button>' : '')
-      +     '</div>'
-      +     '<input type="hidden" id="pf-imagePath" value="' + esc(form.imagePath) + '">'
-      +   '</div>'
-      +   '<div class="space-y-4">'
-      +     '<div class="form-subhead"><h3>Basic details</h3></div>'
-      +     '<div class="field"><label class="label" for="pf-name">Name *</label><input class="input" id="pf-name" value="' + esc(form.name) + '" placeholder="What is this product?"></div>'
-      +     '<div class="field"><label class="label" for="pf-url2">URL *</label><input class="input" id="pf-url2" value="' + esc(form.url) + '" placeholder="https://..."></div>'
-      +     '<div class="field"><label class="label" for="pf-description">Description</label><textarea class="textarea" id="pf-description" placeholder="Optional details, size, colour, variant…">' + esc(form.description) + '</textarea></div>'
-      +     '<div class="form-subhead"><h3>Pricing</h3></div>'
-      +     '<div class="grid form-grid">'
-      +       '<div class="field"><label class="label" for="pf-price">Current price</label><input class="input" id="pf-price" type="number" step="0.01" value="' + esc(form.currentPrice) + '" placeholder="0.00"></div>'
-      +       '<div class="field"><label class="label" for="pf-original">Original price</label><input class="input" id="pf-original" type="number" step="0.01" value="' + esc(form.originalPrice) + '" placeholder="Optional"></div>'
-      +     '</div>'
-      +     '<div class="grid form-grid">'
-      +       '<div class="field"><label class="label" for="pf-currency">Currency</label><select class="select" id="pf-currency">' + currOpts + '</select></div>'
-      +       '<div class="field"><label class="label" for="pf-status">Status</label><select class="select" id="pf-status">' + statusOpts + '</select></div>'
-      +     '</div>'
-      +     '<div class="form-subhead"><h3>Organisation</h3></div>'
-      +     '<div class="field"><label class="label" for="pf-category">Category *</label><select class="select" id="pf-category"><option value="">Choose a category</option>' + catOpts + '</select></div>'
-      +     '<div class="grid form-grid">'
+      +     '<div class="space-y-4">'
+      +       '<div class="form-subhead"><h3>Basic details</h3></div>'
+      +       '<div class="field"><label class="label" for="pf-name">Name <span style="color:hsl(var(--destructive))">*</span></label><input class="input" id="pf-name" value="' + esc(form.name) + '" placeholder="What is this product?"></div>'
+      +       '<div class="field"><label class="label" for="pf-url2">URL <span style="color:hsl(var(--destructive))">*</span></label><input class="input" id="pf-url2" value="' + esc(form.url) + '" placeholder="https://..."></div>'
+      +       '<div class="field"><label class="label" for="pf-description">Description</label><textarea class="textarea" id="pf-description" placeholder="Optional details, size, colour, variant…">' + esc(form.description) + '</textarea></div>'
+      +       '<div class="form-subhead"><h3>Pricing</h3></div>'
+      +       '<div class="grid form-grid">'
+      +         '<div class="field"><label class="label" for="pf-price">Current price</label><input class="input" id="pf-price" type="number" step="0.01" value="' + esc(form.currentPrice) + '" placeholder="0.00"></div>'
+      +         '<div class="field"><label class="label" for="pf-original">Original price</label><input class="input" id="pf-original" type="number" step="0.01" value="' + esc(form.originalPrice) + '" placeholder="Optional"></div>'
+      +       '</div>'
+      +       '<div class="grid form-grid">'
+      +         '<div class="field"><label class="label" for="pf-currency">Currency</label><select class="select" id="pf-currency">' + opts.currOpts + '</select></div>'
+      +         '<div class="field"><label class="label" for="pf-status">Status</label><select class="select" id="pf-status">' + opts.statusOpts + '</select></div>'
+      +       '</div>'
+      +       '<div class="form-subhead"><h3>Organisation</h3></div>'
       +       '<div class="field"><label class="label" for="pf-store">Store</label><input class="input" id="pf-store" value="' + esc(form.storeName) + '" placeholder="Store name"></div>'
       +       '<div class="field"><label class="label" for="pf-availability">Availability</label><input class="input" id="pf-availability" value="' + esc(form.availability) + '" placeholder="In stock, pre-order…"></div>'
+      +       '<div class="field"><label class="label" for="pf-tags">Tags</label><input class="input" id="pf-tags" value="' + esc(form.tags.join(', ')) + '" placeholder="comma separated"></div>'
       +     '</div>'
-      +     '<div class="field"><label class="label" for="pf-tags">Tags</label><input class="input" id="pf-tags" value="' + esc(form.tags.join(', ')) + '" placeholder="comma separated"></div>'
-      +     '<div class="field"><label class="label" for="pf-notes">Private notes</label><textarea class="textarea" id="pf-notes" placeholder="Gift idea for…, size, colour, occasion…">' + esc(form.notes) + '</textarea></div>'
+      +   '</div>'
+      + '</section>'
+
+      // Step 3: Summary
+      + '<section class="form-step ' + (currentStep === 'summary' ? 'active' : '') + '" aria-labelledby="step-summary">'
+      +   '<h2 id="step-summary" class="sr-only">Save product</h2>'
+      +   '<div class="grid form-grid">'
+      +     '<div class="field"><label class="label" for="pf-category">Category <span style="color:hsl(var(--destructive))">*</span></label><select class="select" id="pf-category"><option value="">Choose a category</option>' + opts.catOpts + '</select></div>'
+      +     '<div class="field"><label class="label" for="pf-notes">Private notes</label><textarea class="textarea no-resize" id="pf-notes" placeholder="Gift idea for…, size, colour, occasion…" rows="3">' + esc(form.notes) + '</textarea></div>'
+      +   '</div>'
+      +   '<div class="field" style="margin-top:8px"><label class="label" for="pf-tags">Tags</label><div class="tag-input" id="pf-tags-box"><div class="tag-chips" id="pf-tag-chips"></div><input id="pf-tags" type="text" value="" placeholder="Type a tag and press Enter"></div></div>'
+      +   '<div class="preview-card">'
+      +     '<div class="preview-head">'
+      +       '<h3>Preview</h3>'
+      +       '<span class="muted small">Read-only summary</span>'
+      +     '</div>'
+      +     '<div class="preview-body">'
+      +       '<div class="preview-row">'
+      +         '<div class="preview-thumb" id="pf-preview-thumb">' + (form.imagePath ? '<img src="' + esc(productImageUrl(form.imagePath)) + '" alt="preview" style="width:100%;height:100%;object-fit:cover">' : '<div class="product-image-empty" style="width:48px;height:48px"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-image"></use></svg><span style="display:none">No image</span></div>') + '</div>'
+      +         '<div class="preview-info">'
+      +           '<strong id="pf-preview-name">' + esc(form.name) + '</strong>'
+      +           '<small id="pf-preview-store">' + (form.storeName ? form.storeName : '—') + '</small>'
+      +         '</div>'
+      +       '</div>'
+      +       '<div class="preview-meta">'
+      +         '<span><span class="cat-dot" style="background:hsl(var(--muted-foreground))"></span> <span id="pf-preview-category">' + (form.categoryId ? (categories.find(function(c){return c.id===form.categoryId;})||{name:'—'}).name : '—') + '</span></span>'
+      +         '<span>' + (form.currentPrice ? parseFloat(form.currentPrice).toFixed(2) + ' ' + form.currency : '—') + '</span>'
+      +         '<span>' + form.status + '</span>'
+      +       '</div>'
+      +       '<div id="pf-preview-tags" class="preview-meta" style="margin-top:6px"></div>'
+      +     '</div>'
       +   '</div>'
       + '</section>';
 
@@ -198,6 +264,147 @@
     if (removeImg) removeImg.addEventListener('click', function () { form.imagePath=''; form.imageSourceUrl=''; renderForm(); });
 
     bindFormFields();
+    renderTags();
+    updatePreview();
+    updateWizardFooter();
+  }
+
+  function renderTags() {
+    const box = document.getElementById('pf-tag-chips');
+    const input = document.getElementById('pf-tags-input') || document.getElementById('pf-tags');
+    if (!box) return;
+    box.innerHTML = '';
+    (form.tags || []).forEach(function (tag) {
+      const el = document.createElement('span');
+      el.className = 'tag-chip';
+      el.textContent = tag;
+      const btn = document.createElement('button');
+      btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+      btn.setAttribute('aria-label', 'Remove ' + esc(tag));
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        form.tags = (form.tags || []).filter(function (t) { return t !== tag; });
+        renderForm();
+      });
+      el.appendChild(btn);
+      box.appendChild(el);
+    });
+    const tagInput = document.getElementById('pf-tags-input');
+    if (tagInput) {
+      tagInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          addTagFromInput();
+        }
+        if (e.key === 'Backspace' && !tagInput.value && (form.tags || []).length) {
+          form.tags.pop();
+          renderForm();
+        }
+      });
+      tagInput.addEventListener('blur', addTagFromInput);
+    }
+  }
+
+  function addTagFromInput() {
+    const input = document.getElementById('pf-tags-input');
+    if (!input || !input.value.trim()) return;
+    const parts = input.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+    for (var i = 0; i < parts.length; i++) {
+      if ((form.tags || []).indexOf(parts[i]) === -1) {
+        (form.tags || []).push(parts[i].slice(0, 40));
+      }
+    }
+    if ((form.tags || []).length > 15) {
+      form.tags = (form.tags || []).slice(0, 15);
+    }
+    input.value = '';
+    renderForm();
+  }
+
+  function updatePreview() {
+    const nameEl = document.getElementById('pf-preview-name');
+    const storeEl = document.getElementById('pf-preview-store');
+    const catEl = document.getElementById('pf-preview-category');
+    const tagsEl = document.getElementById('pf-preview-tags');
+    if (nameEl) nameEl.textContent = esc(form.name) || '—';
+    if (storeEl) storeEl.textContent = esc(form.storeName) || '—';
+    if (catEl) {
+      var catName = '—';
+      if (form.categoryId) {
+        var c = categories.find(function (cat) { return cat.id === form.categoryId; });
+        if (c) catName = c.name;
+      }
+      catEl.textContent = catName;
+    }
+    if (tagsEl) {
+      tagsEl.innerHTML = '';
+      if ((form.tags || []).length) {
+        (form.tags || []).forEach(function (tag) {
+          var span = document.createElement('span');
+          span.className = 'tag-pill';
+          span.textContent = tag;
+          tagsEl.appendChild(span);
+        });
+      }
+    }
+  }
+
+  function validateStep() {
+    var errors = [];
+    if (currentStep === 'link') {
+      if (!form.url.trim()) errors.push('Product URL is required.');
+      else if (!/^https?:\/\//i.test(form.url.trim())) errors.push('Use a full HTTP or HTTPS link.');
+    } else if (currentStep === 'details') {
+      if (!form.name.trim()) errors.push('Product name is required.');
+      if (form.currentPrice.trim()) {
+        var v = parseFloat(form.currentPrice);
+        if (isNaN(v) || v < 0) errors.push('Enter a valid price.');
+      }
+      if (form.originalPrice.trim()) {
+        var v = parseFloat(form.originalPrice);
+        if (isNaN(v) || v < 0) errors.push('Enter a valid original price.');
+      }
+    } else if (currentStep === 'summary') {
+      if (!form.categoryId) errors.push('Choose a category.');
+    }
+    return errors;
+  }
+
+  function goNext() {
+    var errors = validateStep();
+    if (errors.length) {
+      toast(errors[0], 'error');
+      return;
+    }
+    if (currentStep === 'link') currentStep = 'details';
+    else if (currentStep === 'details') currentStep = 'summary';
+    renderForm();
+  }
+
+  function goBack() {
+    if (currentStep === 'details') currentStep = 'link';
+    else if (currentStep === 'summary') currentStep = 'details';
+    renderForm();
+  }
+
+  function updateWizardFooter() {
+    if (!modalFooter) return;
+    var isLast = currentStep === 'summary';
+    var isFirst = currentStep === 'link';
+    var saveBtn = document.getElementById('pfSave');
+    var nextBtn = document.getElementById('pfNext');
+    var backBtn = document.getElementById('pfBack');
+
+    if (saveBtn) saveBtn.style.display = isLast ? 'inline-flex' : 'none';
+    if (nextBtn) {
+      nextBtn.style.display = isLast ? 'none' : 'inline-flex';
+      nextBtn.disabled = (validateStep().length > 0);
+    }
+    if (backBtn) {
+      backBtn.style.display = isFirst ? 'none' : 'inline-flex';
+      backBtn.disabled = saving;
+    }
   }
 
   function bindFormFields() {
@@ -210,7 +417,7 @@
     }
     v('pf-name','name'); v('pf-url2','url'); v('pf-price','currentPrice'); v('pf-original','originalPrice');
     v('pf-currency','currency'); v('pf-status','status'); v('pf-category','categoryId');
-    v('pf-store','storeName'); v('pf-availability','availability'); v('pf-tags','tagsText');
+    v('pf-store','storeName'); v('pf-availability','availability');
     v('pf-description','description'); v('pf-notes','notes');
   }
 
@@ -271,8 +478,6 @@
 
   async function saveProduct() {
     if (saving) return;
-    const tagsText = document.getElementById('pf-tags') ? document.getElementById('pf-tags').value : '';
-    form.tags = tagsText.split(',').map(function (t){ return t.trim(); }).filter(Boolean);
     form.name = document.getElementById('pf-name').value.trim();
     form.url = document.getElementById('pf-url2').value.trim();
     form.currentPrice = document.getElementById('pf-price').value.trim();
@@ -332,6 +537,7 @@
 
   async function openProductModal() {
     resetForm();
+    currentStep = 'link';
     openModal();
     if (modal) modal.addEventListener('paste', handlePaste);
     const body = document.getElementById('pfBody');
@@ -349,11 +555,41 @@
       toast('Could not load categories.', 'error');
     }
     renderForm();
+    updateWizardFooter();
+
     const saveBtn = document.getElementById('pfSave');
     const newBtn = saveBtn.cloneNode(true);
     saveBtn.parentNode.replaceChild(newBtn, saveBtn);
     newBtn.id = 'pfSave';
     newBtn.addEventListener('click', saveProduct);
+
+    // Ensure wizard nav buttons exist in the footer
+    var footer = saveBtn ? saveBtn.parentNode : null;
+    if (footer) {
+      var nextBtn = document.getElementById('pfNext');
+      if (!nextBtn) {
+        nextBtn = document.createElement('button');
+        nextBtn.id = 'pfNext';
+        nextBtn.type = 'button';
+        nextBtn.className = 'btn btn-sm';
+        nextBtn.innerHTML = 'Next <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+        footer.insertBefore(nextBtn, saveBtn);
+      }
+      var backBtn = document.getElementById('pfBack');
+      if (!backBtn) {
+        backBtn = document.createElement('button');
+        backBtn.id = 'pfBack';
+        backBtn.type = 'button';
+        backBtn.className = 'btn btn-outline btn-sm';
+        backBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 6 9 12 15 18"></polyline></svg> Back';
+        footer.insertBefore(backBtn, nextBtn);
+      }
+      nextBtn.addEventListener('click', goNext);
+      backBtn.addEventListener('click', goBack);
+      newBtn.addEventListener('click', saveProduct);
+    }
+
+    updateWizardFooter();
   }
 
   ['quickAddBtn','quickAddBtn2','quickAddBtn3','quickAddBtn4'].forEach(function (id) {
