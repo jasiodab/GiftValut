@@ -280,6 +280,20 @@
     bindFormFields();
     renderTags();
     updatePreview();
+
+    var imageBox = document.getElementById('pf-imageBox');
+    if (imageBox && !imageBox.dataset.dndBound) {
+      imageBox.dataset.dndBound = '1';
+      imageBox.addEventListener('dragover', function (e) { e.preventDefault(); imageBox.classList.add('drag-over'); });
+      imageBox.addEventListener('dragleave', function () { imageBox.classList.remove('drag-over'); });
+      imageBox.addEventListener('drop', function (e) {
+        e.preventDefault();
+        imageBox.classList.remove('drag-over');
+        var files = e.dataTransfer && e.dataTransfer.files;
+        if (files && files.length) handleImageUpload(files[0]);
+      });
+    }
+
     updateWizardFooter();
   }
 
@@ -556,6 +570,7 @@
   }
 
   async function openProductModal() {
+    if (modal && modal.classList.contains('open')) return;
     resetForm();
     currentStep = 'link';
     openModal();
@@ -583,7 +598,7 @@
     newBtn.id = 'pfSave';
     newBtn.addEventListener('click', saveProduct);
 
-    // Ensure wizard nav buttons exist in the footer
+    // Ensure wizard nav buttons exist in the footer (listeners attached once)
     var footer = saveBtn ? saveBtn.parentNode : null;
     if (footer) {
       var nextBtn = document.getElementById('pfNext');
@@ -594,6 +609,7 @@
         nextBtn.className = 'btn btn-sm';
         nextBtn.innerHTML = 'Next <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
         footer.insertBefore(nextBtn, saveBtn);
+        nextBtn.addEventListener('click', goNext);
       }
       var backBtn = document.getElementById('pfBack');
       if (!backBtn) {
@@ -603,16 +619,15 @@
         backBtn.className = 'btn btn-outline btn-sm';
         backBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 6 9 12 15 18"></polyline></svg> Back';
         footer.insertBefore(backBtn, nextBtn);
+        backBtn.addEventListener('click', goBack);
       }
-      nextBtn.addEventListener('click', goNext);
-      backBtn.addEventListener('click', goBack);
-      newBtn.addEventListener('click', saveProduct);
     }
 
     updateWizardFooter();
   }
 
   async function openEditProduct(id) {
+    if (modal && modal.classList.contains('open')) return;
     editingProductId = id;
     resetForm();
     currentStep = 'details';
@@ -939,6 +954,8 @@
   }
 
   function openCategoryModal(category) {
+    var m = document.getElementById('categoryModal');
+    if (m && m.classList.contains('open')) return;
     catEditingId = category ? category.id : null;
     var nameEl = document.getElementById('catName');
     var colorEl = document.getElementById('catColor');

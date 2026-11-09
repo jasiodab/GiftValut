@@ -4071,6 +4071,15 @@ h4 {
   background: hsl(var(--card) / 0.7);
 }
 
+.image-upload.drag-over {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary-soft));
+}
+
+.image-upload.drag-over .product-image-empty {
+  opacity: 0.6;
+}
+
 .form-subhead {
   border-top: 1px solid hsl(var(--border) / 0.7);
   padding-top: 20px;
@@ -5227,7 +5236,9 @@ h4 {
   .page { gap: 16px; }
   .page-title { font-size: 22px; }
   .product-grid { grid-template-columns: 1fr; gap: 12px; }
-  .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-grid { grid-template-columns: 1fr; gap: 8px; }
+  .stat-card { min-width: 0; }
+  .stat-value { overflow-wrap: anywhere; font-size: 20px; }
   .form-grid { grid-template-columns: 1fr; }
   .modal { padding: 8px; }
   .modal-dialog { max-width: 100%; border-radius: 12px; }

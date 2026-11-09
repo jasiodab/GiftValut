@@ -371,10 +371,9 @@ final class AuthController extends Controller
         ], 'auth-layout');
     }
 
-    public function inviteForm(): Response
+    public function inviteForm(string $token): Response
     {
         \App\Middleware\CsrfMiddleware::enforce($this->request);
-        $token = (string) $this->request->input('token', '');
         $username = trim((string) $this->request->input('username', ''));
         $email = trim((string) $this->request->input('email', ''));
         $password = (string) $this->request->input('password', '');

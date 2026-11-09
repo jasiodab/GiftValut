@@ -55,15 +55,6 @@ $totalValue = array_sum(array_map(fn($c) => $c['totalValue'], $categories));
               <div class="category-meta"><?= e($c['productCount']) ?> product<?= $c['productCount'] === 1 ? '' : 's' ?></div>
             </div>
           </a>
-          <div class="dropdown">
-            <button class="btn btn-icon-xs btn-ghost" type="button" data-dropdown><?= icon('ellipsis') ?></button>
-            <div class="dropdown-menu">
-              <button class="dropdown-item" type="button" data-edit-cat="<?= e($c['id']) ?>"><?= icon('pencil') ?> Edit</button>
-              <?php if (!$c['isDefault'] || $c['slug'] !== 'other'): ?>
-                <button class="dropdown-item danger" type="button" data-delete-cat="<?= e($c['id']) ?>" data-name="<?= e($c['name']) ?>"><?= icon('trash-2') ?> Delete</button>
-              <?php endif; ?>
-            </div>
-          </div>
         </div>
         <div class="category-foot">
           <div>

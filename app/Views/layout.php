@@ -59,7 +59,7 @@ $databaseStatus = 'connected';
           <?= icon('tags') ?><span>Categories</span>
         </a>
         <div class="collection-card">
-          <div class="collection-card-top"><?= icon('folder-heart') ?> <span>Your collection</span></div>
+          <div class="collection-card-top"><?= icon('folder-heart') ?></div>
           <div class="collection-card-value">
             <div><strong id="collectionCount">0</strong> <small>products saved</small></div>
             <?= icon('gift') ?>
