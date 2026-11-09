@@ -63,12 +63,12 @@
     setTimeout(function () { el.classList.add('leaving'); setTimeout(function () { el.remove(); }, 200); }, 3500);
   }
 
-  // Modal state
   const modal = document.getElementById('productModal');
   let categories = [];
   let settings = { currency: 'PLN' };
   let extracting = false;
   let saving = false;
+  let uploading = false;
   let form = null;
 
   function openModal() { if (modal) modal.classList.add('open'); }
@@ -81,6 +81,28 @@
       availability: '', status: 'TO_CONSIDER', categoryId: '', storeName: '',
       storeDomain: '', notes: '', tags: []
     };
+  }
+
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function productImageUrl(p) {
+    if (!p) return '';
+    if (/^https?:\/\//i.test(p)) return p;
+    return (window.location.origin || '') + '/' + String(p).replace(/^\/+/,'');
+  }
+
+  async function handleImageUpload(file) {
+    if (!file || !file.type.startsWith('image/')) { toast('Choose an image file.', 'error'); return; }
+    uploading = true; renderForm();
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await fetch('/api/uploads/image', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken }, body: fd, credentials: 'same-origin' });
+      const data = await res.json();
+      if (!res.ok) throw new Error((data && data.error && data.error.message) || 'Upload failed');
+      form.imagePath = data.imagePath || data.path || form.imagePath;
+      toast('Image uploaded', 'success');
+    } catch (e) { toast(e.message || 'Could not upload image.', 'error'); }
+    finally { uploading = false; renderForm(); }
   }
 
   function renderForm() {
@@ -98,64 +120,83 @@
     ].map(function (s){ return '<option value="'+s.v+'"'+(form.status===s.v?' selected':'')+'>'+s.l+'</option>'; }).join('');
 
     body.innerHTML = ''
-      + '<div class="url-panel">'
-      +   '<label class="label" for="pf-url">Product link</label>'
+      // Step 1: link
+      + '<section class="url-panel">'
+      +   '<div class="section-title">1. Product link</div>'
+      +   '<label class="label" for="pf-url">Paste a store link</label>'
       +   '<div class="url-row">'
       +     '<input class="input" id="pf-url" type="url" placeholder="https://store.com/product/..." value="' + esc(form.url) + '">'
-      +     '<button class="btn btn-sm" type="button" id="pf-import" ' + (extracting ? 'disabled' : '') + '>' + (extracting ? 'Reading page…' : 'Import product') + '</button>'
+      +     '<button class="btn btn-sm" type="button" id="pf-import" ' + (extracting ? 'disabled' : '') + '>' + (extracting ? 'Reading…' : 'Import') + '</button>'
       +   '</div>'
-      +   '<p class="hint">We’ll try to read the page and fill in the details. You stay in control.</p>'
+      +   '<p class="hint">We’ll try to read the page and fill in the details automatically.</p>'
       +   '<div id="pf-extraction"></div>'
       +   '<div id="pf-duplicate"></div>'
-      + '</div>'
-      + '<div class="product-form-main">'
+      + '</section>'
+      // Step 2: image + basic
+      + '<section class="product-form-main">'
       +   '<div>'
-      +     '<label class="label">Product image</label>'
-      +     '<div class="image-upload">'
-      +       (form.imagePath ? '<img src="' + escAttr(productImageUrl(form.imagePath)) + '" alt="preview" style="width:100%;height:100%;object-fit:cover">' : '<div class="product-image-empty"><span>🎁</span><span>No image</span></div>')
+      +     '<label class="label">Image</label>'
+      +     '<div class="image-upload" id="pf-imageBox">'
+      +       (form.imagePath ? '<img src="' + esc(productImageUrl(form.imagePath)) + '" alt="preview" style="width:100%;height:100%;object-fit:cover">' : '<div class="product-image-empty"><span>🎁</span><span>No image</span></div>')
+      +       (uploading ? '<div class="image-upload-loading"><span class="spinner"></span></div>' : '')
+      +     '</div>'
+      +     '<input type="file" id="pf-file" accept="image/*" style="display:none">'
+      +     '<div style="display:flex;gap:8px;margin-top:8px">'
+      +       '<button class="btn btn-outline btn-sm" type="button" id="pf-uploadBtn">' + (uploading ? 'Uploading…' : 'Upload image') + '</button>'
+      +       (form.imagePath ? '<button class="btn btn-ghost btn-sm" type="button" id="pf-removeImg">Remove</button>' : '')
       +     '</div>'
       +     '<input type="hidden" id="pf-imagePath" value="' + esc(form.imagePath) + '">'
-      +     '<p class="hint mt-2">Images are stored locally. Max 2 MB.</p>'
       +   '</div>'
       +   '<div class="space-y-4">'
-      +     '<div class="field"><label class="label" for="pf-name">Name *</label><input class="input" id="pf-name" value="' + esc(form.name) + '"></div>'
-      +     '<div class="field"><label class="label" for="pf-url2">URL *</label><input class="input" id="pf-url2" value="' + esc(form.url) + '"></div>'
+      +     '<div class="form-subhead"><h3>Basic details</h3></div>'
+      +     '<div class="field"><label class="label" for="pf-name">Name *</label><input class="input" id="pf-name" value="' + esc(form.name) + '" placeholder="What is this product?"></div>'
+      +     '<div class="field"><label class="label" for="pf-url2">URL *</label><input class="input" id="pf-url2" value="' + esc(form.url) + '" placeholder="https://..."></div>'
+      +     '<div class="field"><label class="label" for="pf-description">Description</label><textarea class="textarea" id="pf-description" placeholder="Optional details, size, colour, variant…">' + esc(form.description) + '</textarea></div>'
+      +     '<div class="form-subhead"><h3>Pricing</h3></div>'
       +     '<div class="grid form-grid">'
-      +       '<div class="field"><label class="label" for="pf-price">Current price</label><input class="input" id="pf-price" type="number" step="0.01" value="' + esc(form.currentPrice) + '"></div>'
-      +       '<div class="field"><label class="label" for="pf-original">Original price</label><input class="input" id="pf-original" type="number" step="0.01" value="' + esc(form.originalPrice) + '"></div>'
+      +       '<div class="field"><label class="label" for="pf-price">Current price</label><input class="input" id="pf-price" type="number" step="0.01" value="' + esc(form.currentPrice) + '" placeholder="0.00"></div>'
+      +       '<div class="field"><label class="label" for="pf-original">Original price</label><input class="input" id="pf-original" type="number" step="0.01" value="' + esc(form.originalPrice) + '" placeholder="Optional"></div>'
       +     '</div>'
       +     '<div class="grid form-grid">'
       +       '<div class="field"><label class="label" for="pf-currency">Currency</label><select class="select" id="pf-currency">' + currOpts + '</select></div>'
       +       '<div class="field"><label class="label" for="pf-status">Status</label><select class="select" id="pf-status">' + statusOpts + '</select></div>'
       +     '</div>'
+      +     '<div class="form-subhead"><h3>Organisation</h3></div>'
       +     '<div class="field"><label class="label" for="pf-category">Category *</label><select class="select" id="pf-category"><option value="">Choose a category</option>' + catOpts + '</select></div>'
-      +     '<div class="field"><label class="label" for="pf-store">Store</label><input class="input" id="pf-store" value="' + esc(form.storeName) + '"></div>'
-      +     '<div class="field"><label class="label" for="pf-availability">Availability</label><input class="input" id="pf-availability" value="' + esc(form.availability) + '"></div>'
+      +     '<div class="grid form-grid">'
+      +       '<div class="field"><label class="label" for="pf-store">Store</label><input class="input" id="pf-store" value="' + esc(form.storeName) + '" placeholder="Store name"></div>'
+      +       '<div class="field"><label class="label" for="pf-availability">Availability</label><input class="input" id="pf-availability" value="' + esc(form.availability) + '" placeholder="In stock, pre-order…"></div>'
+      +     '</div>'
       +     '<div class="field"><label class="label" for="pf-tags">Tags</label><input class="input" id="pf-tags" value="' + esc(form.tags.join(', ')) + '" placeholder="comma separated"></div>'
-      +     '<div class="field"><label class="label" for="pf-description">Description</label><textarea class="textarea" id="pf-description">' + esc(form.description) + '</textarea></div>'
-      +     '<div class="field"><label class="label" for="pf-notes">Private notes</label><textarea class="textarea" id="pf-notes">' + esc(form.notes) + '</textarea></div>'
+      +     '<div class="field"><label class="label" for="pf-notes">Private notes</label><textarea class="textarea" id="pf-notes" placeholder="Gift idea for…, size, colour, occasion…">' + esc(form.notes) + '</textarea></div>'
       +   '</div>'
-      + '</div>';
+      + '</section>';
 
-    // wire import button
+    // wire events
     const importBtn = document.getElementById('pf-import');
     if (importBtn) importBtn.addEventListener('click', doImport);
     const urlInput = document.getElementById('pf-url');
-    if (urlInput) urlInput.addEventListener('input', function () { form.url = urlInput.value; syncUrl2(); });
+    if (urlInput) urlInput.addEventListener('input', function () { form.url = urlInput.value; const u2=document.getElementById('pf-url2'); if (u2) u2.value = urlInput.value; });
+
+    const uploadBtn = document.getElementById('pf-uploadBtn');
+    const fileInput = document.getElementById('pf-file');
+    if (uploadBtn && fileInput) {
+      uploadBtn.addEventListener('click', function () { fileInput.click(); });
+      fileInput.addEventListener('change', function () { if (fileInput.files && fileInput.files[0]) handleImageUpload(fileInput.files[0]); fileInput.value=''; });
+    }
+    const removeImg = document.getElementById('pf-removeImg');
+    if (removeImg) removeImg.addEventListener('click', function () { form.imagePath=''; form.imageSourceUrl=''; renderForm(); });
+
     bindFormFields();
   }
 
-  function syncUrl2() {
-    const u2 = document.getElementById('pf-url2');
-    if (u2) u2.value = form.url;
-  }
-
   function bindFormFields() {
-    function v(id, key, isNum) {
+    function v(id, key) {
       const el = document.getElementById(id);
       if (!el) return;
-      el.addEventListener('input', function () { form[key] = el.value; });
-      if (el.tagName === 'SELECT') el.addEventListener('change', function () { form[key] = el.value; });
+      const handler = function () { form[key] = el.value; };
+      el.addEventListener('input', handler);
+      if (el.tagName === 'SELECT') el.addEventListener('change', handler);
     }
     v('pf-name','name'); v('pf-url2','url'); v('pf-price','currentPrice'); v('pf-original','originalPrice');
     v('pf-currency','currency'); v('pf-status','status'); v('pf-category','categoryId');
@@ -200,7 +241,6 @@
         html += '</div></div></div>';
         ex.innerHTML = html;
       }
-      // duplicate check
       try {
         const dup = await api('/api/products/check-url?url=' + encodeURIComponent(form.url), { method: 'GET' });
         const dd = document.getElementById('pf-duplicate');
@@ -221,10 +261,8 @@
 
   async function saveProduct() {
     if (saving) return;
-    // sync tags from text
     const tagsText = document.getElementById('pf-tags') ? document.getElementById('pf-tags').value : '';
-    const tags = tagsText.split(',').map(function (t){ return t.trim(); }).filter(Boolean);
-    form.tags = tags;
+    form.tags = tagsText.split(',').map(function (t){ return t.trim(); }).filter(Boolean);
     form.name = document.getElementById('pf-name').value.trim();
     form.url = document.getElementById('pf-url2').value.trim();
     form.currentPrice = document.getElementById('pf-price').value.trim();
@@ -238,7 +276,6 @@
     form.notes = document.getElementById('pf-notes').value.trim();
     form.imagePath = document.getElementById('pf-imagePath').value;
 
-    // validate
     if (!form.name) { toast('Product name is required.', 'error'); return; }
     if (!form.url) { toast('Product URL is required.', 'error'); return; }
     if (!/^https?:\/\//i.test(form.url)) { toast('Use a full HTTP or HTTPS link.', 'error'); return; }
@@ -263,18 +300,16 @@
     };
 
     saving = true;
-    const saveBtn = document.getElementById('pf-save');
+    const saveBtn = document.getElementById('pfSave');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
     try {
-      const res = await api('/api/products', { method: 'POST', body: payload });
+      await api('/api/products', { method: 'POST', body: payload });
       toast('Product added to your vault', 'success');
       closeModal();
-      // refresh
       setTimeout(function () { window.location.reload(); }, 400);
     } catch (err) {
       toast(err.message || 'Could not save this product.', 'error');
       if (err.details && err.details.fieldErrors) {
-        // show first error
         const fe = err.details.fieldErrors;
         const first = Object.keys(fe)[0];
         if (first) toast(fe[first][0], 'error');
@@ -283,14 +318,6 @@
       saving = false;
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Add product'; }
     }
-  }
-
-  function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function escAttr(s) { return esc(s); }
-  function productImageUrl(p) {
-    if (!p) return '';
-    if (/^https?:\/\//i.test(p)) return p;
-    return (window.location.origin || '') + '/' + String(p).replace(/^\/+/,'');
   }
 
   async function openProductModal() {
@@ -303,7 +330,7 @@
         api('/api/categories', { method: 'GET' }),
         api('/api/settings', { method: 'GET' })
       ]);
-      categories = (cats.categories || cats || []).map(function (c){ return c; });
+      categories = (cats.categories || cats || []);
       if (sets.settings) settings = sets.settings;
       form.currency = settings.currency || 'PLN';
       form.categoryId = (categories.find(function (c){ return c.slug === 'other'; }) || categories[0] || {}).id || '';
@@ -312,14 +339,12 @@
     }
     renderForm();
     const saveBtn = document.getElementById('pfSave');
-    // replace save button handler by cloning
     const newBtn = saveBtn.cloneNode(true);
     saveBtn.parentNode.replaceChild(newBtn, saveBtn);
     newBtn.id = 'pfSave';
     newBtn.addEventListener('click', saveProduct);
   }
 
-  // Wire open triggers
   ['quickAddBtn','quickAddBtn2','quickAddBtn3','quickAddBtn4'].forEach(function (id) {
     const el = document.getElementById(id);
     if (el) el.addEventListener('click', openProductModal);
