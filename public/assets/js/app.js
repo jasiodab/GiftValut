@@ -80,6 +80,13 @@
   let uploading = false;
   let currentStep = 'link'; // 'link' | 'details' | 'summary'
   let form = null;
+  let editingProductId = null;
+  const pfEyebrowEl = document.getElementById('pfEyebrow');
+  const pfTitleEl = document.getElementById('pfTitle');
+  const pfDescEl = document.getElementById('pfDesc');
+  const defaultEyebrow = pfEyebrowEl ? pfEyebrowEl.textContent : 'New addition';
+  const defaultTitle = pfTitleEl ? pfTitleEl.textContent : 'Add to your vault';
+  const defaultDesc = pfDescEl ? pfDescEl.textContent : 'Paste a store link and we’ll try to fill in the details.';
 
   function openModal() { if (modal) modal.classList.add('open'); }
   function handlePaste(e) {
@@ -92,7 +99,7 @@
       }
     }
   }
-  function closeModal() { if (modal) { modal.classList.remove('open'); modal.removeEventListener('paste', handlePaste); } }
+  function closeModal() { if (modal) { modal.classList.remove('open'); modal.removeEventListener('paste', handlePaste); } editingProductId = null; if (pfEyebrowEl) pfEyebrowEl.textContent = defaultEyebrow; if (pfTitleEl) pfTitleEl.textContent = defaultTitle; if (pfDescEl) pfDescEl.textContent = defaultDesc; }
 
   function resetForm() {
     form = {
@@ -504,7 +511,7 @@
     if (!form.name) { toast('Product name is required.', 'error'); return; }
     if (!form.url) { toast('Product URL is required.', 'error'); return; }
     if (!/^https?:\/\//i.test(form.url)) { toast('Use a full HTTP or HTTPS link.', 'error'); return; }
-    if (!form.categoryId) { toast('Choose a category.', 'error'); return; }
+    if (!editingProductId && !form.categoryId) { toast('Choose a category.', 'error'); return; }
 
     const payload = {
       name: form.name,
@@ -528,8 +535,11 @@
     const saveBtn = document.getElementById('pfSave');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
     try {
-      await api('/api/products', { method: 'POST', body: payload });
-      toast('Product added to your vault', 'success');
+      const savePath = editingProductId ? '/api/products/' + editingProductId : '/api/products';
+      const saveMethod = editingProductId ? 'PATCH' : 'POST';
+      await api(savePath, { method: saveMethod, body: payload });
+      toast(editingProductId ? 'Product updated' : 'Product added to your vault', 'success');
+      editingProductId = null;
       closeModal();
       setTimeout(function () { window.location.reload(); }, 400);
     } catch (err) {
@@ -541,7 +551,7 @@
       }
     } finally {
       saving = false;
-      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Add product'; }
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = editingProductId ? 'Save changes' : 'Add product'; }
     }
   }
 
@@ -602,6 +612,58 @@
     updateWizardFooter();
   }
 
+  async function openEditProduct(id) {
+    editingProductId = id;
+    resetForm();
+    currentStep = 'details';
+    openModal();
+    if (modal) modal.addEventListener('paste', handlePaste);
+    const body = document.getElementById('pfBody');
+    if (body) body.innerHTML = '<div class="muted small">Loading…</div>';
+    try {
+      const [cats, sets, prod] = await Promise.all([
+        api('/api/categories', { method: 'GET' }),
+        api('/api/settings', { method: 'GET' }),
+        api('/api/products/' + id, { method: 'GET' })
+      ]);
+      categories = (cats.categories || cats || []);
+      if (sets.settings) settings = sets.settings;
+      const p = prod.product || prod;
+      form.url = p.url || '';
+      form.name = p.name || '';
+      form.description = p.description || '';
+      form.imagePath = p.imageUrl || '';
+      form.imageSourceUrl = p.imageSourceUrl || '';
+      form.currentPrice = p.currentPrice != null ? String(p.currentPrice) : '';
+      form.originalPrice = p.originalPrice != null ? String(p.originalPrice) : '';
+      form.currency = p.currency || 'PLN';
+      form.availability = p.availability || '';
+      form.status = p.status || 'TO_CONSIDER';
+      form.notes = p.notes || '';
+      form.storeName = (p.store && p.store.name) || '';
+      form.storeDomain = (p.store && p.store.domain) || '';
+      form.categoryId = (p.category && p.category.id) || '';
+      form.tags = Array.isArray(p.tags) ? p.tags.slice() : [];
+    } catch (e) {
+      toast('Could not load product.', 'error');
+      closeModal();
+      return;
+    }
+    if (pfEyebrowEl) pfEyebrowEl.textContent = 'Edit product';
+    if (pfTitleEl) pfTitleEl.textContent = 'Edit product';
+    if (pfDescEl) pfDescEl.textContent = 'Update details and save.';
+    renderForm();
+    updateWizardFooter();
+    const saveBtn = document.getElementById('pfSave');
+    if (saveBtn) {
+      const newBtn = saveBtn.cloneNode(true);
+      saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+      newBtn.id = 'pfSave';
+      newBtn.textContent = 'Save changes';
+      newBtn.addEventListener('click', saveProduct);
+    }
+  }
+
   ['quickAddBtn','quickAddBtn2','quickAddBtn3','quickAddBtn4'].forEach(function (id) {
     const el = document.getElementById(id);
     if (el) el.addEventListener('click', openProductModal);
@@ -646,6 +708,15 @@
           window.location.href = '/products';
         } catch (err) { toast(err.message, 'error'); }
       });
+    }
+  });
+
+  // Edit product
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('#editProductBtn');
+    if (btn) {
+      const id = btn.getAttribute('data-id');
+      if (id) openEditProduct(id);
     }
   });
 
