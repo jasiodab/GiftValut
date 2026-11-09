@@ -84,10 +84,14 @@ $currency = $d['currency'];
   </div>
   <div class="mini-grid">
     <?php foreach ($d['recentlyAdded'] as $p): ?>
+      <?php
+      $_name = $p['name'] ?? '';
+      $_short = function_exists('mb_strimwidth') ? mb_strimwidth($_name, 0, 34, '…') : (strlen($_name) > 34 ? substr($_name, 0, 31) . '…' : $_name);
+      ?>
       <a class="mini-product" href="<?= e(url('/products/' . $p['id'])) ?>">
         <div class="mini-thumb">
           <?php if ($p['imageUrl']): ?>
-            <img src="<?= e(product_image_url($p['imageUrl'])) ?>" alt="<?= e($p['name']) ?>" style="width:100%;height:100%;object-fit:cover">
+            <img src="<?= e(product_image_url($p['imageUrl'])) ?>" alt="<?= e($_name) ?>" style="width:100%;height:100%;object-fit:cover">
           <?php else: ?>
             <div class="product-image-empty"><span><?= icon('gift') ?></span></div>
           <?php endif; ?>
@@ -97,7 +101,7 @@ $currency = $d['currency'];
             <span><?= e($p['category']['name'] ?? 'Other') ?></span>
             <span class="ago"><?= e(time_ago($p['createdAt'])) ?></span>
           </div>
-          <div class="mini-name"><?= e($p['name']) ?></div>
+          <div class="mini-name"><?= e($_short) ?></div>
           <div class="mini-price-row">
             <div class="mini-price"><?= e(format_money($p['currentPrice'], $p['currency'])) ?></div>
           </div>
