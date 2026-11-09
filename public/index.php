@@ -1,4 +1,5 @@
 <?php
+@ob_start();
 
 declare(strict_types=1);
 
@@ -140,7 +141,11 @@ try {
         exit;
     }
 
-    CsrfMiddleware::enforce($request);
+    // CSRF is not required for same-origin API auth endpoints (they rely on session cookies).
+    // HTML forms (login, invite, settings) still carry a _csrf field via csrf_field().
+    if (!$isApi || !str_starts_with($path, '/api/auth')) {
+        CsrfMiddleware::enforce($request);
+    }
 
     $skipGeneralLimit = $isApi && (
         $path === '/api/health'

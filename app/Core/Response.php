@@ -92,6 +92,14 @@ final class Response
             return;
         }
 
+        // If headers were already sent (e.g. output before redirect), fall back to
+        // a client-side redirect so the user still ends up at the right page.
+        if ($this->status >= 300 && $this->status < 400 && isset($this->headers['Location']) && headers_sent()) {
+            $loc = $this->headers['Location'];
+            echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=' . htmlspecialchars((string) $loc, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"></head><body></body></html>';
+            return;
+        }
+
         echo $this->body;
     }
 

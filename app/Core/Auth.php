@@ -157,6 +157,8 @@ final class Auth
         self::$user = $user;
         self::$resolved = true;
 
+        // Make sure no output has been flushed before setting the session cookie.
+        @ob_end_clean();
         self::setSessionCookie($token, $request);
 
         return $token;
