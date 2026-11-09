@@ -664,12 +664,77 @@
     const checks = $$('.bulk-check:checked');
     const bar = document.getElementById('bulkBar');
     const count = document.getElementById('bulkCount');
+    const favBtn = document.getElementById('bulkFavorite');
+    const statusBtn = document.getElementById('bulkStatus');
+    const delBtn = document.getElementById('bulkDelete');
+    const has = checks.length > 0;
     if (!bar) return;
-    if (checks.length > 0) { bar.style.display = 'flex'; if (count) count.textContent = checks.length; }
-    else { bar.style.display = 'none'; }
+    if (has) {
+      bar.style.display = 'flex';
+      if (count) count.textContent = checks.length;
+    } else {
+      bar.style.display = 'none';
+    }
+    if (favBtn) favBtn.disabled = !has;
+    if (statusBtn) statusBtn.disabled = !has;
+    if (delBtn) delBtn.disabled = !has;
   }
   document.addEventListener('change', function (e) {
     if (e.target.classList && e.target.classList.contains('bulk-check')) updateBulkBar();
+  });
+
+  function getBulkIds() {
+    return $$('.bulk-check:checked').map(function (cb) { return cb.value; });
+  }
+
+  document.addEventListener('click', function (e) {
+    const del = e.target.closest('#bulkDelete');
+    if (del) {
+      e.preventDefault();
+      const ids = getBulkIds();
+      if (!ids.length) return;
+      openConfirm(
+        'Delete ' + ids.length + ' product' + (ids.length === 1 ? '' : 's') + '?',
+        'This removes the selected products and their images. This cannot be undone.',
+        function () {
+          api('/api/products/bulk', {
+            method: 'POST',
+            body: { action: 'delete', ids: ids }
+          }).then(function () {
+            toast('Product' + (ids.length === 1 ? '' : 's') + ' deleted', 'success');
+            setTimeout(function () { window.location.reload(); }, 400);
+          }).catch(function (err) { toast(err.message || 'Could not delete products.', 'error'); });
+        }
+      );
+    }
+    const fav = e.target.closest('#bulkFavorite');
+    if (fav) {
+      e.preventDefault();
+      const ids = getBulkIds();
+      if (!ids.length) return;
+      api('/api/products/bulk', {
+        method: 'POST',
+        body: { action: 'status', ids: ids, status: 'FAVORITE' }
+      }).then(function () {
+        toast('Added to favorites', 'success');
+        setTimeout(function () { window.location.reload(); }, 400);
+      }).catch(function (err) { toast(err.message || 'Could not update products.', 'error'); });
+    }
+    const status = e.target.closest('#bulkStatus');
+    if (status) {
+      e.preventDefault();
+      const ids = getBulkIds();
+      if (!ids.length) return;
+      var newStatus = prompt('Set status for selected products (TO_CONSIDER, FAVORITE, TO_BUY, PURCHASED):', 'TO_CONSIDER');
+      if (!newStatus) return;
+      api('/api/products/bulk', {
+        method: 'POST',
+        body: { action: 'status', ids: ids, status: newStatus }
+      }).then(function () {
+        toast('Status updated', 'success');
+        setTimeout(function () { window.location.reload(); }, 400);
+      }).catch(function (err) { toast(err.message || 'Could not update products.', 'error'); });
+    }
   });
 
   // Settings save
@@ -732,16 +797,6 @@
     }
   });
 
-  // Categories modal
-  const newCatBtn = document.getElementById('newCategoryBtn');
-  if (newCatBtn) newCatBtn.addEventListener('click', function () {
-    const m = document.getElementById('categoryModal'); if (m) m.classList.add('open');
-  });
-  const catCancel = document.getElementById('catCancel');
-  if (catCancel) catCancel.addEventListener('click', function () {
-    const m = document.getElementById('categoryModal'); if (m) m.classList.remove('open');
-  });
-
   // Notes save
   const saveNotesBtn = document.getElementById('saveNotesBtn');
   if (saveNotesBtn) {
@@ -761,4 +816,137 @@
       if (c) c.textContent = notesField.value.length + ' characters';
     });
   }
+
+  // ---------- Category modal ----------
+  const CAT_COLORS = [
+    '#C9A46A','#D9A3B0','#B7A5C9','#8FAFC4','#9DB8A4','#C4A484',
+    '#B4B8A5','#E0A5A5','#88B7B0','#D6A878','#A8A29E'
+  ];
+  const CAT_ICONS = [
+    'tag','gem','sparkles','shirt','headphones','gamepad-2',
+    'book-open','lamp','flower-2','ticket','cake-slice','gift'
+  ];
+  let catEditingId = null;
+  let catSelectedColor = CAT_COLORS[1];
+  let catSelectedIcon = CAT_ICONS[0];
+
+  function renderCatSwatches() {
+    const box = document.getElementById('catSwatches');
+    if (!box) return;
+    box.innerHTML = CAT_COLORS.map(function (color) {
+      var selected = catSelectedColor === color ? ' selected' : '';
+      return '<button type="button" class="swatch' + selected + '" style="background:' + color + '" data-cat-color="' + esc(color) + '" aria-label="Colour ' + esc(color) + '"></button>';
+    }).join('');
+    box.querySelectorAll('button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        catSelectedColor = btn.getAttribute('data-cat-color');
+        renderCatSwatches();
+      });
+    });
+  }
+
+  function renderCatIcons() {
+    const box = document.getElementById('catIcons');
+    if (!box) return;
+    box.innerHTML = CAT_ICONS.map(function (name) {
+      var selected = catSelectedIcon === name ? ' selected' : '';
+      return '<button type="button" class="icon-option' + selected + '" data-cat-icon="' + esc(name) + '" aria-label="Icon ' + esc(name) + '"><svg class="icon"><use href="#i-' + esc(name) + '"></use></svg></button>';
+    }).join('');
+    box.querySelectorAll('button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        catSelectedIcon = btn.getAttribute('data-cat-icon');
+        renderCatIcons();
+      });
+    });
+  }
+
+  function openCategoryModal(category) {
+    catEditingId = category ? category.id : null;
+    var nameEl = document.getElementById('catName');
+    var colorEl = document.getElementById('catColor');
+    var iconEl = document.getElementById('catIcon');
+    var title = document.getElementById('catModalTitle');
+    var desc = document.getElementById('catModalDesc');
+    var saveBtn = document.getElementById('catSave');
+
+    if (nameEl) nameEl.value = category ? category.name : '';
+    if (colorEl) colorEl.value = category ? category.color : CAT_COLORS[1];
+    if (iconEl) iconEl.value = category ? category.icon : 'tag';
+    catSelectedColor = colorEl ? colorEl.value : CAT_COLORS[1];
+    catSelectedIcon = iconEl ? iconEl.value : 'tag';
+    if (title) title.textContent = category ? 'Edit category' : 'New category';
+    if (desc) desc.textContent = category ? 'Update name, colour and icon.' : 'Pick a name, a soft accent colour and an icon.';
+    if (saveBtn) saveBtn.textContent = category ? 'Save changes' : 'Create category';
+
+    renderCatSwatches();
+    renderCatIcons();
+
+    var m = document.getElementById('categoryModal');
+    if (m) m.classList.add('open');
+  }
+
+  function closeCategoryModal() {
+    var m = document.getElementById('categoryModal');
+    if (m) m.classList.remove('open');
+    catEditingId = null;
+  }
+
+  const newCatBtn = document.getElementById('newCategoryBtn');
+  if (newCatBtn) newCatBtn.addEventListener('click', function () { openCategoryModal(null); });
+  const catCancel = document.getElementById('catCancel');
+  if (catCancel) catCancel.addEventListener('click', closeCategoryModal);
+
+  const catSave = document.getElementById('catSave');
+  if (catSave) catSave.addEventListener('click', async function () {
+    var nameEl = document.getElementById('catName');
+    var colorEl = document.getElementById('catColor');
+    var iconEl = document.getElementById('catIcon');
+    if (!nameEl || !nameEl.value.trim()) { toast('Category name is required.', 'error'); return; }
+    var body = {
+      name: nameEl.value.trim(),
+      color: (colorEl ? colorEl.value : catSelectedColor) || catSelectedColor,
+      icon: (iconEl ? iconEl.value : catSelectedIcon) || catSelectedIcon
+    };
+    try {
+      if (catEditingId) {
+        await api('/api/categories/' + catEditingId, { method: 'PATCH', body: body });
+        toast('Category updated', 'success');
+      } else {
+        await api('/api/categories', { method: 'POST', body: body });
+        toast('Category created', 'success');
+      }
+      closeCategoryModal();
+      setTimeout(function () { window.location.reload(); }, 400);
+    } catch (err) { toast(err.message || 'Could not save category.', 'error'); }
+  });
+
+  // Edit / delete category from row dropdown
+  document.addEventListener('click', function (e) {
+    var editBtn = e.target.closest('[data-edit-cat]');
+    if (editBtn) {
+      e.preventDefault();
+      var id = editBtn.getAttribute('data-edit-cat');
+      var name = editBtn.closest('.category-card').querySelector('.category-name').textContent;
+      // We need color + icon from the card; fetch from the DOM attribute via a data-ish lookup.
+      // Simplest: refetch categories is heavy; instead read from the rendered card inline styles is unreliable.
+      // We'll open a minimal edit with name only and keep existing color/icon unless user changes.
+      openCategoryModal({ id: id, name: name, color: document.getElementById('catColor') ? document.getElementById('catColor').value : CAT_COLORS[1], icon: document.getElementById('catIcon') ? document.getElementById('catIcon').value : 'tag' });
+    }
+    var delBtn = e.target.closest('[data-delete-cat]');
+    if (delBtn) {
+      e.preventDefault();
+      var id = delBtn.getAttribute('data-delete-cat');
+      var name = delBtn.getAttribute('data-name') || 'this category';
+      openConfirm(
+        'Delete ' + esc(name) + '?',
+        'This only removes the category. Products and price history are not affected.',
+        function () {
+          api('/api/categories/' + id, { method: 'DELETE' }).then(function () {
+            toast('Category deleted', 'success');
+            setTimeout(function () { window.location.reload(); }, 400);
+          }).catch(function (err) { toast(err.message || 'Could not delete category.', 'error'); });
+        }
+      );
+    }
+  });
 })();
