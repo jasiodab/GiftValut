@@ -43,9 +43,16 @@
     }
     const res = await fetch(path, Object.assign({}, options, { headers, credentials: 'same-origin' }));
     let data = null;
-    try { data = await res.json(); } catch (e) {}
+    let errorMessage = res.statusText;
+    try {
+      data = await res.json();
+      if (data && data.error && data.error.message) errorMessage = data.error.message;
+    } catch (e) {
+      // Nie-JSON odpowiedź (np. HTML z błędem PHP) – spróbuj wyciągnąć tekst.
+      try { errorMessage = await res.text(); } catch (e2) {}
+    }
     if (!res.ok) {
-      const err = new Error((data && data.error && data.error.message) || res.statusText);
+      const err = new Error(errorMessage || res.statusText);
       err.code = data && data.error ? data.error.code : null;
       err.details = data && data.error ? data.error.details : null;
       err.status = res.status;

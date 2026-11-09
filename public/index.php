@@ -45,6 +45,10 @@ use App\Middleware\RateLimitMiddleware;
 try {
     App::ensureSchema();
 } catch (Throwable $error) {
+    if ($isApi || $request->wantsJson()) {
+        Response::error(500, 'DATABASE_ERROR', $error->getMessage())->send();
+        exit;
+    }
     http_response_code(500);
     header('Content-Type: text/plain; charset=utf-8');
     echo 'Gift Vault could not open its database.' . PHP_EOL;
