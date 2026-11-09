@@ -72,7 +72,17 @@
   let form = null;
 
   function openModal() { if (modal) modal.classList.add('open'); }
-  function closeModal() { if (modal) modal.classList.remove('open'); }
+  function handlePaste(e) {
+    if (!modal || !modal.classList.contains('open')) return;
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.indexOf('image/') === 0) {
+        const file = items[i].getAsFile();
+        if (file) { e.preventDefault(); handleImageUpload(file); return; }
+      }
+    }
+  }
+  function closeModal() { if (modal) { modal.classList.remove('open'); modal.removeEventListener('paste', handlePaste); } }
 
   function resetForm() {
     form = {
@@ -137,7 +147,7 @@
       +   '<div>'
       +     '<label class="label">Image</label>'
       +     '<div class="image-upload" id="pf-imageBox">'
-      +       (form.imagePath ? '<img src="' + esc(productImageUrl(form.imagePath)) + '" alt="preview" style="width:100%;height:100%;object-fit:cover">' : '<div class="product-image-empty"><span>🎁</span><span>No image</span></div>')
+      +       (form.imagePath ? '<img src="' + esc(productImageUrl(form.imagePath)) + '" alt="preview" style="width:100%;height:100%;object-fit:cover">' : '<div class="product-image-empty"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-image"></use></svg><span>No image</span></div>')
       +       (uploading ? '<div class="image-upload-loading"><span class="spinner"></span></div>' : '')
       +     '</div>'
       +     '<input type="file" id="pf-file" accept="image/*" style="display:none">'
@@ -232,7 +242,7 @@
       if (ex) {
         const cls = res.success ? 'extraction-panel success' : 'extraction-panel warning';
         let html = '<div class="' + cls + '"><div class="extraction-top">';
-        html += res.success ? '<span>✓</span>' : '<span>!</span>';
+        html += res.success ? '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-circle-check"></use></svg>' : '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-circle-alert"></use></svg>';
         html += '<div class="extraction-body"><div class="extraction-title">' + (res.success ? 'Details found — review before saving' : (res.error || 'Limited details found')) + '</div>';
         if (res.strategies && res.strategies.length) html += '<div class="extraction-strategies">Detected with ' + res.strategies.join(' · ') + '</div>';
         if (res.warnings && res.warnings.length) {
@@ -323,6 +333,7 @@
   async function openProductModal() {
     resetForm();
     openModal();
+    if (modal) modal.addEventListener('paste', handlePaste);
     const body = document.getElementById('pfBody');
     if (body) body.innerHTML = '<div class="muted small">Loading…</div>';
     try {
