@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -6,6 +6,8 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ImagePlus,
   Link2,
   Loader2,
@@ -13,7 +15,8 @@ import {
   Sparkles,
   Upload,
   Wand2,
-  X
+  X,
+  type LucideIcon
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
@@ -44,13 +47,7 @@ import {
 } from "@/components/ui/select";
 import { ProductImage } from "./ProductImage";
 
-type ProductFormDialogProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  product?: Product;
-  onSaved?: (product: Product) => void;
-  defaultCategoryId?: string;
-};
+type FormStep = "link" | "details" | "summary";
 
 type FormState = {
   name: string;
@@ -108,13 +105,19 @@ function formFromProduct(product: Product): FormState {
   };
 }
 
-export function ProductFormDialog({
-  open,
-  onOpenChange,
-  product,
-  onSaved,
-  defaultCategoryId
-}: ProductFormDialogProps) {
+const STEPS: Array<{ id: FormStep; label: string; hint: string }> = [
+  { id: "link", label: "Link produktu", hint: "Wklej adres ze sklepu" },
+  { id: "details", label: "Szczegóły", hint: "Nazwa, cena i obrazek" },
+  { id: "summary", label: "Kategoria i zapis", hint: "Ostateczne ustawienia" }
+];
+
+export function ProductFormDialog({ open, onOpenChange, product, onSaved, defaultCategoryId }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  product?: Product;
+  onSaved?: (product: Product) => void;
+  defaultCategoryId?: string;
+}) {
   const queryClient = useQueryClient();
   const isEditing = Boolean(product);
   const { data: categoriesData } = useCategories();
@@ -124,7 +127,7 @@ export function ProductFormDialog({
   const knownTags = tagsData?.tags ?? [];
 
   const [form, setForm] = useState<FormState>(emptyForm("PLN"));
-  const [detailsVisible, setDetailsVisible] = useState(false);
+  const [step, setStep] = useState<FormStep>("link");
   const [extracting, setExtracting] = useState(false);
   const [extraction, setExtraction] = useState<{
     success: boolean;
@@ -146,7 +149,7 @@ export function ProductFormDialog({
     const defaultCurrency = settings?.currency ?? "PLN";
     if (product) {
       setForm(formFromProduct(product));
-      setDetailsVisible(true);
+      setStep("summary");
     } else {
       const otherCategory =
         categories.find((category) => category.slug === "other") ?? categories[0] ?? null;
@@ -154,7 +157,7 @@ export function ProductFormDialog({
         ...emptyForm(defaultCurrency),
         categoryId: defaultCategoryId ?? otherCategory?.id ?? ""
       });
-      setDetailsVisible(false);
+      setStep("link");
     }
     setExtraction(null);
     setDuplicate(null);
@@ -164,14 +167,13 @@ export function ProductFormDialog({
   }, [open, product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!open || detailsVisible) return;
-    if (form.categoryId) return;
+    if (!open || step !== "link") return;
     const other = categories.find((category) => category.slug === "other") ?? categories[0];
-    if (other) setForm((current) => ({ ...current, categoryId: other.id }));
-  }, [categories, open, detailsVisible, form.categoryId]);
+    if (other && !form.categoryId) setForm((current) => ({ ...current, categoryId: other.id }));
+  }, [categories, open, step, form.categoryId]);
 
   useEffect(() => {
-    if (!open || !form.url.trim() || !/^https?:\/\//i.test(form.url.trim())) {
+    if (step !== "link" || !form.url.trim() || !/^https?:\/\//i.test(form.url.trim())) {
       setDuplicate(null);
       return;
     }
@@ -193,7 +195,7 @@ export function ProductFormDialog({
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [form.url, open, product?.id]);
+  }, [form.url, open, step, product?.id]);
 
   const saveMutation = useMutation({
     mutationFn: async (payload: ProductInput) => {
@@ -270,12 +272,12 @@ export function ProductFormDialog({
         strategies: result.strategies
       });
       applyExtraction(result.data);
-      setDetailsVisible(true);
+      setStep("details");
       if (result.success) {
         toast.success("Product details found");
       } else {
         toast.warning("Automatic extraction was limited", {
-          description: "The form is open so you can fill in the details manually."
+          description: "You can fill in the details manually in the next step."
         });
       }
     } catch (error) {
@@ -285,7 +287,7 @@ export function ProductFormDialog({
         warnings: ["You can still add the product manually."],
         strategies: []
       });
-      setDetailsVisible(true);
+      setStep("details");
       toast.error("Could not read this link", {
         description: error instanceof Error ? error.message : undefined
       });
@@ -337,12 +339,19 @@ export function ProductFormDialog({
     setTagDraft("");
   };
 
-  const validate = () => {
+  const validateLink = () => {
     const next: Record<string, string> = {};
-    if (!form.name.trim()) next.name = "Product name is required.";
     if (!form.url.trim()) next.url = "Product URL is required.";
     else if (!/^https?:\/\//i.test(form.url.trim())) next.url = "Use a full HTTP or HTTPS link.";
-    if (!form.categoryId) next.categoryId = "Choose a category.";
+    if (duplicate) next.url = "This URL is already in your vault.";
+    setErrors((current) => ({ ...current, ...next, url: next.url ?? current.url }));
+    if (!next.url) setErrors((current) => { const n = { ...current }; delete n.url; return n; });
+    return Object.keys(next).length === 0;
+  };
+
+  const validateDetails = () => {
+    const next: Record<string, string> = {};
+    if (!form.name.trim()) next.name = "Product name is required.";
     if (form.currentPrice.trim()) {
       const value = parsePriceString(form.currentPrice);
       if (value === null || value < 0) next.currentPrice = "Enter a valid price.";
@@ -351,33 +360,32 @@ export function ProductFormDialog({
       const value = parsePriceString(form.originalPrice);
       if (value === null || value < 0) next.originalPrice = "Enter a valid original price.";
     }
-    if (duplicate) next.url = "This URL is already in your vault.";
-    setErrors(next);
+    setErrors((current) => ({ ...current, ...next }));
+    ["name", "currentPrice", "originalPrice"].forEach((k) => {
+      if (!next[k]) setErrors((current) => { const n = { ...current }; delete n[k]; return n; });
+    });
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = () => {
-    setFormError(null);
-    if (!validate()) return;
+  const validateSummary = () => {
+    const next: Record<string, string> = {};
+    if (!form.categoryId) next.categoryId = "Choose a category.";
+    setErrors((current) => ({ ...current, ...next }));
+    if (!next.categoryId) setErrors((current) => { const n = { ...current }; delete n.categoryId; return n; });
+    return Object.keys(next).length === 0;
+  };
 
-    const payload: ProductInput = {
-      name: form.name.trim(),
-      url: form.url.trim(),
-      description: form.description.trim() || null,
-      imagePath: form.imagePath || null,
-      imageSourceUrl: form.imageSourceUrl || null,
-      currentPrice: form.currentPrice.trim() ? parsePriceString(form.currentPrice) : null,
-      originalPrice: form.originalPrice.trim() ? parsePriceString(form.originalPrice) : null,
-      currency: form.currency,
-      availability: form.availability.trim() || null,
-      status: form.status,
-      categoryId: form.categoryId,
-      notes: form.notes.trim() || null,
-      storeName: form.storeName.trim() || null,
-      storeDomain: form.storeDomain.trim() || null,
-      tags: form.tags
-    };
-    saveMutation.mutate(payload);
+  const canGoNext = step === "link" ? validateLink() : step === "details" ? validateDetails() : true;
+
+  const goNext = () => {
+    if (!canGoNext) return;
+    if (step === "link") setStep("details");
+    else if (step === "details") setStep("summary");
+  };
+
+  const goBack = () => {
+    if (step === "details") setStep("link");
+    else if (step === "summary") setStep("details");
   };
 
   const suggestedTags = useMemo(
@@ -394,125 +402,137 @@ export function ProductFormDialog({
       update(key, event.target.value)
   });
 
+  const isLastStep = step === "summary";
+  const isFirstStep = step === "link";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100dvh-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:max-h-[92vh]">
         <DialogHeader className="border-b border-border/80 px-4 py-4 sm:px-6 sm:py-5">
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-            {isEditing ? "Edit product" : "New addition"}
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                {isEditing ? "Edit product" : "Add to your vault"}
+              </div>
+              <DialogTitle>{isEditing ? "Edit product details" : STEPS.find((s) => s.id === step)?.label}</DialogTitle>
+              <DialogDescription className="text-sm">
+                {isEditing
+                  ? "Update the details and pricing for this product."
+                  : STEPS.find((s) => s.id === step)?.hint}
+              </DialogDescription>
+            </div>
+            <StepIndicator currentStep={step} />
           </div>
-          <DialogTitle>{isEditing ? "Edit product details" : "Add to your vault"}</DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Update the details and pricing for this product."
-              : "Paste a store link and we’ll try to fill in the details. You stay in control of what is saved."}
-          </DialogDescription>
         </DialogHeader>
 
         <div className="scrollbar-thin flex-1 overflow-y-auto">
           <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-5">
-            <div className="rounded-xl border border-border bg-card p-4">
-              <Label htmlFor="product-url" className="mb-2 flex items-center gap-1.5">
-                <Link2 className="h-3.5 w-3.5 text-primary" />
-                Product link
-              </Label>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  id="product-url"
-                  value={form.url}
-                  onChange={(event) => {
-                    update("url", event.target.value);
-                    if (!detailsVisible) setDetailsVisible(false);
-                  }}
-                  placeholder="https://store.com/product/..."
-                  className={cn("h-10 bg-card", errors.url && "border-destructive focus-visible:ring-destructive/30")}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void handleExtract();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  onClick={() => void handleExtract()}
-                  loading={extracting}
-                  className="h-10 shrink-0"
-                >
-                  {!extracting ? <Wand2 className="h-4 w-4" /> : null}
-                  {extracting ? "Reading page" : "Fetch details"}
-                </Button>
-              </div>
-              {errors.url ? <p className="mt-1.5 text-xs text-destructive">{errors.url}</p> : null}
-              {!detailsVisible ? (
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-muted-foreground">
-                    Stores may block automated reading. You can always enter details by hand.
+
+            {/* STEP 1: Link */}
+            {step === "link" && (
+              <section aria-labelledby="step-link-heading">
+                <h2 id="step-link-heading" className="sr-only">Link produktu</h2>
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <Label htmlFor="product-url" className="mb-2 flex items-center gap-1.5">
+                    <Link2 className="h-3.5 w-3.5 text-primary" />
+                    Product link
+                  </Label>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Paste a link from any online store. We’ll try to read the name, price and image automatically.
                   </p>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setDetailsVisible(true)}>
-                    Add manually <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-
-            {duplicate ? (
-              <div className="flex items-start gap-3 rounded-xl border border-warning/20 bg-warning/10 p-3.5 text-warning">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <div className="min-w-0 flex-1 text-xs leading-relaxed">
-                  <p className="font-medium">This product is already in your vault.</p>
-                  <p className="mt-0.5 truncate">{duplicate.name}</p>
-                </div>
-                <Button asChild variant="outline" size="sm" className="shrink-0 bg-card/70">
-                  <Link to={`/products/${duplicate.id}`} onClick={() => onOpenChange(false)}>
-                    Open
-                  </Link>
-                </Button>
-              </div>
-            ) : null}
-
-            {extraction ? (
-              <div
-                className={cn(
-                  "rounded-xl border p-4",
-                  extraction.success
-                    ? "border-success/20 bg-success/10"
-                    : "border-warning/20 bg-warning/10"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  {extraction.success ? (
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                  ) : (
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className={cn("text-sm font-medium", extraction.success ? "text-success" : "text-warning")}>
-                      {extraction.success ? "Details found — review before saving" : extraction.error ?? "Limited details found"}
-                    </p>
-                    {extraction.strategies.length ? (
-                      <p className="mt-1 flex items-center gap-1 text-[11px] text-success">
-                        <Sparkles className="h-3 w-3" />
-                        Detected with {extraction.strategies.join(" · ")}
-                      </p>
-                    ) : null}
-                    {extraction.warnings.length ? (
-                      <ul className="mt-2 space-y-1 text-[11px] leading-relaxed text-warning">
-                        {extraction.warnings.map((warning) => (
-                          <li key={warning} className="flex items-start gap-1.5">
-                            <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-current" />
-                            {warning}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      id="product-url"
+                      value={form.url}
+                      onChange={(event) => {
+                        update("url", event.target.value);
+                        setDuplicate(null);
+                      }}
+                      placeholder="https://store.com/product/..."
+                      className={cn("h-10 bg-card", errors.url && "border-destructive focus-visible:ring-destructive/30")}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void handleExtract();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => void handleExtract()}
+                      loading={extracting}
+                      className="h-10 shrink-0"
+                      disabled={!form.url.trim() || !/^https?:\/\//i.test(form.url.trim())}
+                    >
+                      {!extracting ? <Wand2 className="h-4 w-4" /> : null}
+                      {extracting ? "Reading page" : "Fetch details"}
+                    </Button>
                   </div>
+                  {errors.url ? <p className="mt-1.5 text-xs text-destructive">{errors.url}</p> : null}
+                  {duplicate ? (
+                    <div className="mt-4 flex items-start gap-3 rounded-xl border border-warning/20 bg-warning/10 p-3.5 text-warning">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div className="min-w-0 flex-1 text-xs leading-relaxed">
+                        <p className="font-medium">This product is already in your vault.</p>
+                        <p className="mt-0.5 truncate">{duplicate.name}</p>
+                      </div>
+                      <Button asChild variant="outline" size="sm" className="shrink-0 bg-card/70">
+                        <Link to={`/products/${duplicate.id}`} onClick={() => onOpenChange(false)}>
+                          Open
+                        </Link>
+                      </Button>
+                    </div>
+                  ) : null}
+                  {extraction ? (
+                    <div className={cn("mt-4 rounded-xl border p-4", extraction.success ? "border-success/20 bg-success/10" : "border-warning/20 bg-warning/10")}>
+                      <div className="flex items-start gap-3">
+                        {extraction.success ? (
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                        ) : (
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className={cn("text-sm font-medium", extraction.success ? "text-success" : "text-warning")}>
+                            {extraction.success ? "Details found — review them in the next step" : extraction.error ?? "Limited details found"}
+                          </p>
+                          {extraction.strategies.length ? (
+                            <p className="mt-1 flex items-center gap-1 text-[11px] text-success">
+                              <Sparkles className="h-3 w-3" />
+                              Detected with {extraction.strategies.join(" · ")}
+                            </p>
+                          ) : null}
+                          {extraction.warnings.length ? (
+                            <ul className="mt-2 space-y-1 text-[11px] leading-relaxed text-warning">
+                              {extraction.warnings.map((warning) => (
+                                <li key={warning} className="flex items-start gap-1.5">
+                                  <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-current" />
+                                  {warning}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {!extraction && !detailsExtracted() ? (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Stores may block automated reading. You can always enter details by hand.
+                      </p>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setStep("details")}>
+                        Add manually <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
-              </div>
-            ) : null}
+              </section>
+            )}
 
-            {detailsVisible ? (
-              <div className="animate-slide-up space-y-6">
+            {/* STEP 2: Details */}
+            {step === "details" && (
+              <section aria-labelledby="step-details-heading">
+                <h2 id="step-details-heading" className="sr-only">Szczegóły produktu</h2>
                 {formError ? (
                   <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
                     {formError}
@@ -588,7 +608,7 @@ export function ProductFormDialog({
 
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="product-name">Name *</Label>
+                      <Label htmlFor="product-name">Name <span className="text-destructive">*</span></Label>
                       <Input
                         id="product-name"
                         {...field("name")}
@@ -671,67 +691,70 @@ export function ProductFormDialog({
                         </Select>
                       </div>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="store-name">Store</Label>
+                        <Input
+                          id="store-name"
+                          {...field("storeName")}
+                          placeholder="Store name"
+                          className="bg-card"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="availability">Availability</Label>
+                        <Input
+                          id="availability"
+                          {...field("availability")}
+                          placeholder="In stock, pre-order…"
+                          className="bg-card"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
+              </section>
+            )}
 
-                <div className="border-t border-border/70 pt-5">
-                  <h3 className="mb-4 text-sm font-semibold">Organisation</h3>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label>Category *</Label>
-                      <Select value={form.categoryId} onValueChange={(value) => update("categoryId", value)}>
-                        <SelectTrigger className={errors.categoryId ? "border-destructive" : ""}>
-                          <SelectValue placeholder="Choose a category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              <span className="flex items-center gap-2">
-                                <span
-                                  className="h-2 w-2 rounded-full"
-                                  style={{ backgroundColor: category.color }}
-                                />
-                                {category.name}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors.categoryId ? <p className="text-xs text-destructive">{errors.categoryId}</p> : null}
-                    </div>
+            {/* STEP 3: Summary */}
+            {step === "summary" && (
+              <section aria-labelledby="step-summary-heading">
+                <h2 id="step-summary-heading" className="sr-only">Kategoria i zapis</h2>
+                {formError ? (
+                  <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
+                    {formError}
+                  </div>
+                ) : null}
 
-                    <div className="space-y-1.5">
-                      <Label htmlFor="store-name">Store</Label>
-                      <Input
-                        id="store-name"
-                        {...field("storeName")}
-                        placeholder="Store name"
-                        className="bg-card"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label htmlFor="availability">Availability</Label>
-                      <Input
-                        id="availability"
-                        {...field("availability")}
-                        placeholder="In stock, pre-order…"
-                        className="bg-card"
-                      />
-                    </div>
-
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Category <span className="text-destructive">*</span></Label>
+                    <Select value={form.categoryId} onValueChange={(value) => update("categoryId", value)}>
+                      <SelectTrigger className={errors.categoryId ? "border-destructive" : ""}>
+                        <SelectValue placeholder="Choose a category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            <span className="flex items-center gap-2">
+                              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: category.color }} />
+                              {category.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.categoryId ? <p className="text-xs text-destructive">{errors.categoryId}</p> : null}
                   </div>
 
-                  <div className="mt-4 space-y-1.5">
-                    <Label htmlFor="product-tags">Tags</Label>
+                  <div className="space-y-1.5">
+                    <Label>Tags</Label>
                     <div className="rounded-md border border-input bg-card p-2 focus-within:ring-2 focus-within:ring-ring/30">
                       {form.tags.length ? (
                         <div className="mb-2 flex flex-wrap gap-1.5">
                           {form.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-medium"
-                            >
+                            <span key={tag} className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-medium">
                               {tag}
                               <button
                                 type="button"
@@ -781,44 +804,179 @@ export function ProductFormDialog({
                       </div>
                     ) : null}
                   </div>
-
-                  <div className="mt-4 space-y-1.5">
-                    <Label htmlFor="product-notes">Private notes</Label>
-                    <Textarea
-                      id="product-notes"
-                      {...field("notes")}
-                      placeholder="Gift idea for…, size, colour preference, occasion…"
-                      rows={3}
-                      className="resize-none bg-card"
-                    />
-                  </div>
                 </div>
-              </div>
-            ) : null}
+
+                <div className="mt-4 space-y-1.5">
+                  <Label htmlFor="product-notes">Private notes</Label>
+                  <Textarea
+                    id="product-notes"
+                    {...field("notes")}
+                    placeholder="Gift idea for…, size, colour preference, occasion…"
+                    rows={3}
+                    className="resize-none bg-card"
+                  />
+                </div>
+
+                <CardPreview product={form} categories={categories} />
+              </section>
+            )}
+
           </div>
         </div>
 
         <DialogFooter className="border-t border-border/80 bg-card px-4 py-4 sm:px-6">
-          {detailsVisible ? (
+          {!isLastStep && (
             <div className="mr-auto hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
               <Sparkles className="h-3 w-3" />
-              Review extracted details before saving
+              {step === "link" ? "Review extracted details before saving" : "Review before saving"}
             </div>
-          ) : null}
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
+          )}
           <Button
             type="button"
-            onClick={handleSubmit}
-            loading={saveMutation.isPending}
-            disabled={!detailsVisible || Boolean(duplicate)}
+            variant="outline"
+            onClick={isFirstStep ? () => onOpenChange(false) : goBack}
+            disabled={saveMutation.isPending}
           >
-            {!saveMutation.isPending ? <Plus className="h-4 w-4" /> : null}
-            {isEditing ? "Save changes" : "Add product"}
+            {isFirstStep ? "Cancel" : "Back"}
           </Button>
+          {!isLastStep ? (
+            <Button
+              type="button"
+              onClick={goNext}
+              disabled={!canGoNext || saveMutation.isPending}
+              className="ml-2"
+            >
+              Next <ChevronRight className="ml-1 h-3.5 w-3.5" />
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saveMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                loading={saveMutation.isPending}
+                disabled={!validateSummary() || Boolean(duplicate) || saveMutation.isPending}
+              >
+                {!saveMutation.isPending ? <Plus className="h-4 w-4" /> : null}
+                {isEditing ? "Save changes" : "Add product"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
+
+  function detailsExtracted(): boolean {
+    return Boolean(extraction);
+  }
+
+  function handleSubmit() {
+    setFormError(null);
+    if (!validateSummary()) return;
+
+    const payload: ProductInput = {
+      name: form.name.trim(),
+      url: form.url.trim(),
+      description: form.description.trim() || null,
+      imagePath: form.imagePath || null,
+      imageSourceUrl: form.imageSourceUrl || null,
+      currentPrice: form.currentPrice.trim() ? parsePriceString(form.currentPrice) : null,
+      originalPrice: form.originalPrice.trim() ? parsePriceString(form.originalPrice) : null,
+      currency: form.currency,
+      availability: form.availability.trim() || null,
+      status: form.status,
+      categoryId: form.categoryId,
+      notes: form.notes.trim() || null,
+      storeName: form.storeName.trim() || null,
+      storeDomain: form.storeDomain.trim() || null,
+      tags: form.tags
+    };
+    saveMutation.mutate(payload);
+  }
+}
+
+function StepIndicator({ currentStep }: { currentStep: FormStep }) {
+  const order: FormStep[] = ["link", "details", "summary"];
+  return (
+    <div className="flex items-center gap-1 text-[10px]">
+      {order.map((stepId, index) => {
+        const step = STEPS.find((s) => s.id === stepId)!;
+        const isActive = currentStep === stepId;
+        const isCompleted = order.indexOf(currentStep) > index;
+        return (
+          <>
+            <div
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-medium transition-all",
+                isCompleted
+                  ? "bg-success text-success-foreground border-success"
+                  : isActive
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground"
+              )}
+              aria-current={isActive ? "step" : undefined}
+            >
+              {isCompleted ? <CheckCircle2 className="h-3 w-3" /> : index + 1}
+            </div>
+            {index < order.length - 1 && (
+              <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+            )}
+          </>
+        );
+      })}
+    </div>
+  );
+}
+
+function CardPreview({ product, categories }: { product: FormState; categories: any[] }) {
+  const category = categories.find((c) => c.id === product.categoryId);
+  return (
+    <div className="mt-6 rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between border-b border-border/70 px-3 py-2.5">
+        <h3 className="text-sm font-semibold">Preview</h3>
+        <p className="text-[10px] text-muted-foreground">Read-only summary</p>
+      </div>
+      <div className="px-3 py-3 space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-border/60">
+            <ProductImage src={product.imagePath} alt={product.name} iconClassName="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{product.name}</p>
+            {product.storeName ? (
+              <p className="text-[10px] text-muted-foreground truncate">{product.storeName}</p>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span>{formatMoneyDisplay(product.currentPrice)} {product.currency}</span>
+          {category && (
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: category.color }} />
+              {category.name}
+            </span>
+          )}
+          <span>{product.status}</span>
+        </div>
+        {product.tags.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {product.tags.map((tag) => (
+              <span key={tag} className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function formatMoneyDisplay(value: string): string {
+  const num = parsePriceString(value);
+  if (num === null) return "—";
+  return new Intl.NumberFormat("en-US", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
 }

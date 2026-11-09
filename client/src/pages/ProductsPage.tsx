@@ -161,7 +161,7 @@ export function ProductsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="main" aria-label="Products collection">
       <PageHeader
         eyebrow="Collection"
         title="All products"
@@ -178,6 +178,7 @@ export function ProductsPage() {
                 setBulkMode((current) => !current);
                 setSelected([]);
               }}
+              aria-pressed={bulkMode}
             >
               <CheckSquare className="h-4 w-4" />
               {bulkMode ? "Done selecting" : "Select"}
@@ -190,11 +191,14 @@ export function ProductsPage() {
         }
       />
 
+      {/* Filters card */}
       <Card className="p-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <div className="relative min-w-0 flex-1">
+            <label className="sr-only">Search products</label>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              id="product-search"
               value={searchValue}
               onChange={(event) => setSearchValue(event.target.value)}
               placeholder="Search products, stores, notes or tags…"
@@ -213,7 +217,11 @@ export function ProductsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={status} onValueChange={(value) => updateFilter("status", value)}>
+            <Select
+              value={status}
+              onValueChange={(value) => updateFilter("status", value)}
+              aria-label="Filter by status"
+            >
               <SelectTrigger className="h-10 w-full min-w-[120px] sm:w-[138px] bg-card">
                 <SelectValue />
               </SelectTrigger>
@@ -227,7 +235,7 @@ export function ProductsPage() {
               </SelectContent>
             </Select>
 
-            <Select value={categoryId} onValueChange={(value) => updateFilter("categoryId", value)}>
+            <Select value={categoryId} onValueChange={(value) => updateFilter("categoryId", value)} aria-label="Filter by category">
               <SelectTrigger className="h-10 w-full min-w-[120px] sm:w-[148px] bg-card">
                 <SelectValue />
               </SelectTrigger>
@@ -241,7 +249,7 @@ export function ProductsPage() {
               </SelectContent>
             </Select>
 
-            <Select value={sort} onValueChange={(value) => updateFilter("sort", value)}>
+            <Select value={sort} onValueChange={(value) => updateFilter("sort", value)} aria-label="Sort products">
               <SelectTrigger className="h-10 w-full min-w-[120px] sm:w-[160px] bg-card">
                 <SelectValue />
               </SelectTrigger>
@@ -255,13 +263,13 @@ export function ProductsPage() {
             </Select>
 
             {filtersActive ? (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9" aria-label="Clear all filters">
                 <SlidersHorizontal className="h-3.5 w-3.5" />
                 Clear
               </Button>
             ) : null}
 
-            <div className="flex h-9 items-center rounded-lg border border-border bg-card p-0.5">
+            <div className="flex h-9 items-center rounded-lg border border-border bg-card p-0.5" role="group" aria-label="View mode">
               <button
                 type="button"
                 onClick={() => setViewMode("grid")}
@@ -270,6 +278,7 @@ export function ProductsPage() {
                   view === "grid" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
                 aria-label="Grid view"
+                aria-pressed={view === "grid"}
               >
                 <Grid2X2 className="h-3.5 w-3.5" />
               </button>
@@ -281,6 +290,7 @@ export function ProductsPage() {
                   view === "list" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
                 aria-label="List view"
+                aria-pressed={view === "list"}
               >
                 <List className="h-3.5 w-3.5" />
               </button>
@@ -289,8 +299,9 @@ export function ProductsPage() {
         </div>
       </Card>
 
-      {bulkMode ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Bulk mode bar */}
+      {bulkMode && products.length > 0 ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between" role="toolbar" aria-label="Bulk actions">
           <div className="flex items-center gap-3">
             <Checkbox
               checked={allSelected ? true : someSelected ? "indeterminate" : false}
@@ -386,6 +397,8 @@ export function ProductsPage() {
                 "grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4",
                 isFetching && "opacity-70 transition-opacity"
               )}
+              role="grid"
+              aria-label="Products"
             >
               {products.map((product) => (
                 <ProductCard
@@ -398,7 +411,7 @@ export function ProductsPage() {
               ))}
             </div>
           ) : (
-            <div className={cn("space-y-2", isFetching && "opacity-70 transition-opacity")}>
+            <div className={cn("space-y-2", isFetching && "opacity-70 transition-opacity")} role="list" aria-label="Products">
               {products.map((product) => (
                 <ProductListRow
                   key={product.id}
@@ -412,7 +425,7 @@ export function ProductsPage() {
           )}
 
           {pagination && pagination.totalPages > 1 ? (
-            <div className="flex items-center justify-between rounded-xl border border-border/80 bg-card px-4 py-3">
+            <nav className="flex items-center justify-between rounded-xl border border-border/80 bg-card px-4 py-3" aria-label="Pagination">
               <p className="text-xs text-muted-foreground">
                 Showing <span className="font-medium text-foreground">{(pagination.page - 1) * pagination.pageSize + 1}</span>
                 –<span className="font-medium text-foreground">{Math.min(pagination.page * pagination.pageSize, pagination.total)}</span> of{" "}
@@ -441,7 +454,7 @@ export function ProductsPage() {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
+            </nav>
           ) : null}
         </>
       ) : null}
@@ -462,7 +475,7 @@ export function ProductsPage() {
 function ProductsSkeleton({ view }: { view: "grid" | "list" }) {
   if (view === "list") {
     return (
-      <div className="space-y-2">
+      <div className="space-y-2" aria-label="Loading products">
         {Array.from({ length: 6 }).map((_, index) => (
           <Skeleton key={index} className="h-[82px] rounded-xl" />
         ))}
@@ -470,7 +483,7 @@ function ProductsSkeleton({ view }: { view: "grid" | "list" }) {
     );
   }
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading products">
       {Array.from({ length: 8 }).map((_, index) => (
         <div key={index} className="overflow-hidden rounded-xl border border-border bg-card">
           <Skeleton className="aspect-[4/3] rounded-none" />

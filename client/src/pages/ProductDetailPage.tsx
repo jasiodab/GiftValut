@@ -111,7 +111,7 @@ export function ProductDetailPage() {
 
   if (isError || !product) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" role="main" aria-label="Product not found">
         <Link
           to="/products"
           className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -141,7 +141,7 @@ export function ProductDetailPage() {
   const notesDirty = notesDraft !== (product.notes ?? "");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="main" aria-label={product.name}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           to="/products"
@@ -213,6 +213,7 @@ export function ProductDetailPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+        {/* Left column: image & notes */}
         <div className="space-y-5 xl:col-span-5">
           <Card className="overflow-hidden">
             <div className="group relative aspect-[4/3] overflow-hidden bg-card">
@@ -287,6 +288,7 @@ export function ProductDetailPage() {
             </div>
             <div className="p-5">
               <Textarea
+                id="product-notes"
                 value={notesDraft}
                 onChange={(event) => setNotesDraft(event.target.value)}
                 rows={5}
@@ -319,11 +321,16 @@ export function ProductDetailPage() {
               </p>
             </Card>
           ) : null}
+        </div>
 
+        {/* Right column: details & price */}
+        <div className="space-y-5 xl:col-span-7">
           <Card>
             <div className="border-b border-border/70 px-5 py-4">
-              <h2 className="text-sm font-semibold">Product details</h2>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">Everything stored locally</p>
+              <div>
+                <h2 className="text-sm font-semibold">Product details</h2>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">Everything stored locally</p>
+              </div>
             </div>
             <div className="space-y-4 p-5">
               <DetailRow icon={StoreIcon} label="Store">
@@ -383,9 +390,7 @@ export function ProductDetailPage() {
               </div>
             </div>
           </Card>
-        </div>
 
-        <div className="space-y-5 xl:col-span-7">
           <Card>
             <div className="border-b border-border/70 px-5 py-4">
               <div>
@@ -413,8 +418,19 @@ export function ProductDetailPage() {
             </div>
           </Card>
 
+          {product.discountPercent ? (
+            <Card className="border-l-2 border-success bg-success/5">
+              <div className="p-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-success" />
+                  <p className="text-sm font-medium text-foreground">
+                    {product.discountPercent}% below original price
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ) : null}
         </div>
-
       </div>
 
       <ProductFormDialog
