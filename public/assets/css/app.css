@@ -4711,6 +4711,39 @@ h4 {
   }
 }
 
+/* ---------- Frontend polish (mobile-first) ----------------------------- */
+@media (max-width: 639px) {
+  .content { padding: 14px 14px 72px; }
+  .page { gap: 16px; }
+  .page-title { font-size: 22px; }
+  .product-grid { grid-template-columns: 1fr; gap: 12px; }
+  .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .modal { padding: 8px; }
+  .modal-dialog { max-width: 100%; border-radius: 12px; }
+  .modal-form-body { padding: 12px 14px; gap: 16px; }
+  .btn { min-height: 44px; }
+  .input, .select, .textarea { min-height: 44px; font-size: 16px; }
+  .bottom-nav-item { min-height: 56px; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .content { padding: 20px 20px 64px; }
+}
+@media (min-width: 1024px) {
+  .content { padding: 32px 40px 56px; }
+}
+.btn, .input, .select, .textarea, .nav-item, .bottom-nav-item { transition: all .18s ease; }
+.btn:focus-visible, .input:focus-visible, .select:focus-visible, .textarea:focus-visible, a:focus-visible, button:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+.card { border-radius: 14px; }
+.product-card { border-radius: 14px; }
+.modal-dialog { border-radius: 16px; }
+.empty-state { border-radius: 14px; }
+.toast, .flash { border-radius: 12px; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
