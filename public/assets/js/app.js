@@ -473,6 +473,9 @@
     } finally {
       extracting = false;
       renderForm();
+      if (currentStep === 'link') {
+        goNext();
+      }
     }
   }
 
