@@ -13,7 +13,7 @@ $databaseStatus = 'connected';
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e($title) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
+  <link rel="stylesheet" href="<?= e(asset('css/app.css') . '?v=c59e4af') ?>">
   <link rel="preload" href="<?= e(asset('fonts/inter-latin-wght-normal.woff2')) ?>" as="font" type="font/woff2" crossorigin>
   <script>
     (function () {
@@ -198,6 +198,6 @@ $databaseStatus = 'connected';
     settings: null
   };
 </script>
-<script src="<?= e(asset('js/app.js')) ?>" defer></script>
+<script src="<?= e(asset('js/app.js') . '?v=c59e4af') ?>" defer></script>
 </body>
 </html>
