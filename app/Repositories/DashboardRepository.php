@@ -55,14 +55,29 @@ final class DashboardRepository
             [$userId]
         );
 
+        $toBuyRows = $database->fetchAll(
+            "SELECT p.*, s.name AS storeName, s.domain AS storeDomain,
+                    c.name AS categoryName, c.slug AS categorySlug, c.color AS categoryColor, c.icon AS categoryIcon
+             FROM \"Product\" p
+             LEFT JOIN \"Store\" s ON s.id = p.storeId
+             LEFT JOIN \"Category\" c ON c.id = p.categoryId
+             WHERE p.userId = ? AND p.status = 'TO_BUY'
+             ORDER BY p.updatedAt DESC LIMIT 5",
+            [$userId]
+        );
+
         $recentIds = array_map(static fn (array $row): string => (string) $row['id'], $recentRows);
         $favoriteIds = array_map(static fn (array $row): string => (string) $row['id'], $favoriteRows);
-        $tagNames = $tags->namesForProducts(array_values(array_unique(array_merge($recentIds, $favoriteIds))));
+        $toBuyIds = array_map(static fn (array $row): string => (string) $row['id'], $toBuyRows);
+        $tagNames = $tags->namesForProducts(array_values(array_unique(array_merge($recentIds, $favoriteIds, $toBuyIds))));
         foreach ($recentRows as $index => $row) {
             $recentRows[$index]['tags'] = $tagNames[(string) $row['id']] ?? [];
         }
         foreach ($favoriteRows as $index => $row) {
             $favoriteRows[$index]['tags'] = $tagNames[(string) $row['id']] ?? [];
+        }
+        foreach ($toBuyRows as $index => $row) {
+            $toBuyRows[$index]['tags'] = $tagNames[(string) $row['id']] ?? [];
         }
 
         $categoryRows = $database->fetchAll(
@@ -88,6 +103,7 @@ final class DashboardRepository
             ],
             'recentlyAdded' => array_map([Serializer::class, 'product'], $recentRows),
             'favorites' => array_map([Serializer::class, 'product'], $favoriteRows),
+            'toBuy' => array_map([Serializer::class, 'product'], $toBuyRows),
             'categorySummary' => array_map(static fn (array $row): array => [
                 'id' => (string) $row['id'],
                 'name' => (string) $row['name'],

@@ -32,12 +32,12 @@ final class ProductController extends Controller
         }
         $status = (string) ($query['status'] ?? 'ALL');
         if (!in_array($status, ['ALL', 'TO_CONSIDER', 'FAVORITE', 'TO_BUY', 'PURCHASED'], true)) {
-            throw $this->validationError(['status' => ['Choose a valid status.']]);
+            throw $this->validationError(['status' => ['Wybierz poprawny status.']]);
         }
         $favorite = (string) ($query['favorite'] ?? '') === 'true';
         $sort = (string) ($query['sort'] ?? 'recent');
         if (!in_array($sort, ['recent', 'updated', 'price-asc', 'price-desc', 'name'], true)) {
-            throw $this->validationError(['sort' => ['Choose a valid sort order.']]);
+            throw $this->validationError(['sort' => ['Wybierz poprawną kolejność sortowania.']]);
         }
         $page = max(1, (int) ($query['page'] ?? 1));
         $pageSize = (int) ($query['pageSize'] ?? 24);
@@ -68,7 +68,7 @@ final class ProductController extends Controller
         $user = AuthMiddleware::user($this->request);
         $url = trim((string) $this->request->query('url', ''));
         if ($url === '') {
-            throw new HttpException(400, 'A URL is required.', 'INVALID_URL');
+            throw new HttpException(400, 'Podaj adres URL.', 'INVALID_URL');
         }
         return Response::json(['duplicate' => $this->service->duplicateCheck((string) $user['id'], $url)]);
     }
@@ -78,7 +78,7 @@ final class ProductController extends Controller
         $user = AuthMiddleware::user($this->request);
         $row = $this->service->repository()->findForUser($id, (string) $user['id'], $this->service->tagRepository());
         if ($row === null) {
-            throw new HttpException(404, 'Product not found.', 'PRODUCT_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono produktu.', 'PRODUCT_NOT_FOUND');
         }
         return Response::json(['product' => \App\Services\Serializer::product($row)]);
     }
@@ -104,7 +104,7 @@ final class ProductController extends Controller
         $user = AuthMiddleware::user($this->request);
         $existing = $this->service->repository()->findRowForUser($id, (string) $user['id']);
         if ($existing === null) {
-            throw new HttpException(404, 'Not found', 'NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono.', 'NOT_FOUND');
         }
         $this->service->delete((string) $user['id'], $id);
         return Response::json(['deleted' => true]);
@@ -116,17 +116,18 @@ final class ProductController extends Controller
         $payload = $this->jsonInput();
         $action = $payload['action'] ?? null;
         if (!in_array($action, ['delete', 'status'], true)) {
-            throw $this->validationError(['action' => ['Choose a valid bulk action.']]);
+            throw $this->validationError(['action' => ['Wybierz poprawną akcję zbiorczą.']]);
         }
 
         $ids = $payload['ids'] ?? null;
         if (!is_array($ids) || count($ids) < 1 || count($ids) > 200) {
-            throw $this->validationError(['ids' => ['Choose between 1 and 200 products.']]);
+            throw $this->validationError(['ids' => ['Wybierz od 1 do 200 produktów.']]);
         }
+
         $cleanIds = [];
         foreach ($ids as $id) {
             if (!is_scalar($id) || trim((string) $id) === '') {
-                throw $this->validationError(['ids' => ['One of the selected products is invalid.']]);
+                throw $this->validationError(['ids' => ['Jeden z wybranych produktów jest nieprawidłowy.']]);
             }
             $cleanIds[] = (string) $id;
         }
@@ -137,7 +138,7 @@ final class ProductController extends Controller
 
         $status = $payload['status'] ?? null;
         if (!in_array($status, ['TO_CONSIDER', 'FAVORITE', 'TO_BUY', 'PURCHASED'], true)) {
-            throw $this->validationError(['status' => ['Choose a valid status.']]);
+            throw $this->validationError(['status' => ['Wybierz poprawny status.']]);
         }
         return Response::json([
             'updated' => $this->service->updateStatusBulk((string) $user['id'], $cleanIds, (string) $status),
@@ -183,7 +184,7 @@ final class ProductController extends Controller
         if (array_key_exists('currency', $payload)) {
             $currency = strtoupper(trim((string) $payload['currency']));
             if (!preg_match('/^[A-Z]{3}$/', $currency)) {
-                $validator->addError('currency', 'Choose a valid currency.');
+                $validator->addError('currency', 'Wybierz poprawną walutę.');
             } else {
                 $data['currency'] = $currency;
             }
@@ -194,7 +195,7 @@ final class ProductController extends Controller
         if (array_key_exists('status', $payload)) {
             $status = (string) $payload['status'];
             if (!in_array($status, ['TO_CONSIDER', 'FAVORITE', 'TO_BUY', 'PURCHASED'], true)) {
-                $validator->addError('status', 'Choose a valid status.');
+                $validator->addError('status', 'Wybierz poprawny status.');
             } else {
                 $data['status'] = $status;
             }
@@ -228,7 +229,7 @@ final class ProductController extends Controller
 
     private function validationError(array $fieldErrors): HttpException
     {
-        return new HttpException(400, 'Please check the highlighted fields.', 'VALIDATION_ERROR', [
+        return new HttpException(400, 'Sprawdź zaznaczone pola.', 'VALIDATION_ERROR', [
             'formErrors' => [],
             'fieldErrors' => $fieldErrors,
         ]);

@@ -33,12 +33,12 @@ final class Csrf
         }
 
         if ($provided === null || $provided === '') {
-            throw new HttpException(403, 'The security token is missing. Refresh the page and try again.', 'CSRF_MISSING');
+            throw new HttpException(403, 'Brak tokena bezpieczeństwa. Odśwież stronę i spróbuj ponownie.', 'CSRF_MISSING');
         }
 
         $expected = self::token($request);
         if (!hash_equals($expected, $provided)) {
-            throw new HttpException(403, 'The security token has expired. Refresh the page and try again.', 'CSRF_INVALID');
+            throw new HttpException(403, 'Token bezpieczeństwa wygasł. Odśwież stronę i spróbuj ponownie.', 'CSRF_INVALID');
         }
     }
 

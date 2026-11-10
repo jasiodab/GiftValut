@@ -1,58 +1,89 @@
 (function () {
   'use strict';
 
-  const GV = window.GV || {};
-  const csrfToken = GV.csrfToken || '';
+  var GV = window.GV || {};
+  var csrfToken = GV.csrfToken || '';
 
   function $(sel, root) { return (root || document).querySelector(sel); }
-  function $$(sel, root) { return Array.from((root || document).querySelectorAll(sel)); }
+  function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
 
-  // Theme
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function iconSvg(name, cls) {
+    return '<svg class="' + (cls || 'icon') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-' + esc(name) + '"></use></svg>';
+  }
+
+  function syncModalLock() {
+    var open = document.querySelector('.modal.open');
+    document.body.style.overflow = open ? 'hidden' : '';
+  }
+
+  // ---------- Theme ----------
   function applyTheme(theme) {
     document.documentElement.classList.toggle('dark', theme === 'dark');
-    localStorage.setItem('gv_theme', theme);
-    const label = document.getElementById('themeLabel');
-    if (label) label.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+    try { localStorage.setItem('gv_theme', theme); } catch (e) {}
+    var label = document.getElementById('themeLabel');
+    if (label) label.textContent = theme === 'dark' ? 'Tryb jasny' : 'Tryb ciemny';
+    var btn = document.getElementById('themeToggle');
+    if (btn) btn.setAttribute('aria-label', theme === 'dark' ? 'Włącz tryb jasny' : 'Włącz tryb ciemny');
   }
-  applyTheme(localStorage.getItem('gv_theme') || 'light');
+
+  var storedTheme = 'light';
+  try { storedTheme = localStorage.getItem('gv_theme') || 'light'; } catch (e) {}
+  applyTheme(storedTheme);
+
   document.addEventListener('click', function (e) {
     if (e.target.closest('#themeToggle, #themeToggleAuth')) {
-      const cur = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-      applyTheme(cur === 'dark' ? 'light' : 'dark');
+      var current = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
     }
   });
 
-  // Sidebar
-  const sidebar = document.getElementById('sidebar');
-  const backdrop = document.getElementById('sidebarBackdrop');
-  function openSidebar() { if (sidebar) sidebar.classList.add('open'); if (backdrop) backdrop.style.display = 'block'; }
-  function closeSidebar() { if (sidebar) sidebar.classList.remove('open'); if (backdrop) backdrop.style.display = ''; }
-  const openBtn = document.getElementById('mobileMenuBtn');
-  const closeBtn = document.getElementById('sidebarClose');
+  // ---------- Sidebar ----------
+  var sidebar = document.getElementById('sidebar');
+  var backdrop = document.getElementById('sidebarBackdrop');
+
+  function openSidebar() {
+    if (sidebar) sidebar.classList.add('open');
+    if (backdrop) backdrop.style.display = 'block';
+  }
+  function closeSidebar() {
+    if (sidebar) sidebar.classList.remove('open');
+    if (backdrop) backdrop.style.display = '';
+  }
+
+  var openBtn = document.getElementById('mobileMenuBtn');
+  var closeBtn = document.getElementById('sidebarClose');
   if (openBtn) openBtn.addEventListener('click', openSidebar);
   if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
   if (backdrop) backdrop.addEventListener('click', closeSidebar);
 
-  // API
+  // ---------- API ----------
   async function api(path, options) {
     options = options || {};
-    const headers = Object.assign({ 'X-CSRF-Token': csrfToken }, options.headers || {});
-    if (options.body && !(options.body instanceof FormData)) {
+    var headers = Object.assign({ 'X-CSRF-Token': csrfToken }, options.headers || {});
+    var body = options.body;
+    if (body && !(body instanceof FormData)) {
       headers['Content-Type'] = 'application/json';
-      options.body = JSON.stringify(options.body);
+      body = JSON.stringify(body);
     }
-    const res = await fetch(path, Object.assign({}, options, { headers, credentials: 'same-origin' }));
-    let data = null;
-    let errorMessage = res.statusText;
+    var res = await fetch(path, Object.assign({}, options, { body: body, headers: headers, credentials: 'same-origin' }));
+    var data = null;
+    var errorMessage = res.statusText;
     try {
       data = await res.json();
       if (data && data.error && data.error.message) errorMessage = data.error.message;
     } catch (e) {
-      // Nie-JSON odpowiedź (np. HTML z błędem PHP) – spróbuj wyciągnąć tekst.
       try { errorMessage = await res.text(); } catch (e2) {}
     }
     if (!res.ok) {
-      const err = new Error(errorMessage || res.statusText);
+      var err = new Error(errorMessage || res.statusText);
       err.code = data && data.error ? data.error.code : null;
       err.details = data && data.error ? data.error.details : null;
       err.status = res.status;
@@ -61,46 +92,89 @@
     return data;
   }
 
+  // ---------- Toast ----------
   function toast(message, type) {
-    const stack = document.getElementById('flashStack') || document.body;
-    const el = document.createElement('div');
-    el.className = 'toast ' + (type || '');
-    el.innerHTML = '<span>' + (message || '') + '</span>';
-    stack.appendChild(el);
-    setTimeout(function () { el.classList.add('leaving'); setTimeout(function () { el.remove(); }, 200); }, 3500);
-  }
-
-  const modal = document.getElementById('productModal');
-  const modalBody = document.getElementById('pfBody');
-  const modalFooter = document.getElementById('pfFooter');
-  let categories = [];
-  let groups = [];
-  let settings = { currency: 'PLN' };
-  let extracting = false;
-  let saving = false;
-  let uploading = false;
-  let currentStep = 'link'; // 'link' | 'details' | 'summary'
-  let form = null;
-  let editingProductId = null;
-  const pfEyebrowEl = document.getElementById('pfEyebrow');
-  const pfTitleEl = document.getElementById('pfTitle');
-  const pfDescEl = document.getElementById('pfDesc');
-  const defaultEyebrow = pfEyebrowEl ? pfEyebrowEl.textContent : 'New addition';
-  const defaultTitle = pfTitleEl ? pfTitleEl.textContent : 'Add to your vault';
-  const defaultDesc = pfDescEl ? pfDescEl.textContent : 'Paste a store link and we’ll try to fill in the details.';
-
-  function openModal() { if (modal) modal.classList.add('open'); }
-  function handlePaste(e) {
-    if (!modal || !modal.classList.contains('open')) return;
-    const items = (e.clipboardData && e.clipboardData.items) || [];
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type && items[i].type.indexOf('image/') === 0) {
-        const file = items[i].getAsFile();
-        if (file) { e.preventDefault(); handleImageUpload(file); return; }
-      }
+    type = type || 'info';
+    var stack = document.getElementById('flashStack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.id = 'flashStack';
+      stack.className = 'flash-stack';
+      document.body.appendChild(stack);
     }
+    var iconName = type === 'success' ? 'circle-check' : (type === 'error' || type === 'warning' ? 'circle-alert' : 'info');
+    var el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.innerHTML = iconSvg(iconName) + '<span></span>';
+    el.querySelector('span').textContent = message || '';
+    stack.appendChild(el);
+    setTimeout(function () {
+      el.classList.add('leaving');
+      setTimeout(function () { el.remove(); }, 200);
+    }, 3600);
   }
-  function closeModal() { if (modal) { modal.classList.remove('open'); modal.removeEventListener('paste', handlePaste); } editingProductId = null; if (pfEyebrowEl) pfEyebrowEl.textContent = defaultEyebrow; if (pfTitleEl) pfTitleEl.textContent = defaultTitle; if (pfDescEl) pfDescEl.textContent = defaultDesc; }
+
+  // ---------- Confirm dialog ----------
+  var confirmCallback = null;
+
+  function openConfirm(title, desc, cb) {
+    var t = document.getElementById('confirmTitle');
+    var d = document.getElementById('confirmDesc');
+    if (t) t.textContent = title;
+    if (d) d.textContent = desc || '';
+    confirmCallback = cb;
+    var modal = document.getElementById('confirmModal');
+    if (modal) modal.classList.add('open');
+    syncModalLock();
+  }
+
+  function closeConfirm() {
+    var modal = document.getElementById('confirmModal');
+    if (modal) modal.classList.remove('open');
+    confirmCallback = null;
+    syncModalLock();
+  }
+
+  var confirmCancel = document.getElementById('confirmCancel');
+  var confirmOk = document.getElementById('confirmOk');
+  if (confirmCancel) confirmCancel.addEventListener('click', closeConfirm);
+  if (confirmOk) confirmOk.addEventListener('click', function () {
+    var cb = confirmCallback;
+    closeConfirm();
+    if (cb) cb();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var confirm = document.getElementById('confirmModal');
+    if (confirm && confirm.classList.contains('open')) { closeConfirm(); return; }
+    var category = document.getElementById('categoryModal');
+    if (category && category.classList.contains('open')) { closeCategoryModal(); return; }
+    var product = document.getElementById('productModal');
+    if (product && product.classList.contains('open')) { closeModal(); }
+  });
+
+  // ---------- Product modal / wizard ----------
+  var modal = document.getElementById('productModal');
+  var modalBody = document.getElementById('pfBody');
+  var pfEyebrowEl = document.getElementById('pfEyebrow');
+  var pfTitleEl = document.getElementById('pfTitle');
+  var pfDescEl = document.getElementById('pfDesc');
+  var pfHintEl = document.getElementById('pfHint');
+
+  var defaultEyebrow = pfEyebrowEl ? pfEyebrowEl.textContent : 'Nowy produkt';
+  var defaultTitle = pfTitleEl ? pfTitleEl.textContent : 'Dodaj do swojej kolekcji';
+  var defaultDesc = pfDescEl ? pfDescEl.textContent : 'Wklej link do sklepu — spróbujemy uzupełnić szczegóły.';
+
+  var categories = [];
+  var groups = [];
+  var settings = { currency: 'PLN' };
+  var extracting = false;
+  var saving = false;
+  var uploading = false;
+  var currentStep = 'link';
+  var form = null;
+  var editingProductId = null;
 
   function resetForm() {
     form = {
@@ -111,48 +185,63 @@
     };
   }
 
-  function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function productImageUrl(p) {
-    if (!p) return '';
-    if (/^https?:\/\//i.test(p)) return p;
-    return (window.location.origin || '') + '/' + String(p).replace(/^\/+/,'');
+  function productImageUrl(path) {
+    if (!path) return '';
+    if (/^(https?:)?\/\//i.test(path) || path.charAt(0) === '/') return path;
+    return (window.location.origin || '') + '/' + String(path).replace(/^\/+/, '');
   }
 
-  async function handleImageUpload(file) {
-    if (!file || !file.type.startsWith('image/')) { toast('Choose an image file.', 'error'); return; }
-    uploading = true; renderForm();
-    try {
-      const fd = new FormData();
-      fd.append('image', file);
-      const res = await fetch('/api/uploads/image', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken }, body: fd, credentials: 'same-origin' });
-      const data = await res.json();
-      if (!res.ok) throw new Error((data && data.error && data.error.message) || 'Upload failed');
-      form.imagePath = data.imagePath || data.path || form.imagePath;
-      toast('Image uploaded', 'success');
-    } catch (e) { toast(e.message || 'Could not upload image.', 'error'); }
-    finally { uploading = false; renderForm(); }
+  function openModal() {
+    if (!modal) return;
+    modal.classList.add('open');
+    modal.addEventListener('paste', handlePaste);
+    syncModalLock();
+  }
+
+  function closeModal() {
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.removeEventListener('paste', handlePaste);
+    editingProductId = null;
+    if (pfEyebrowEl) pfEyebrowEl.textContent = defaultEyebrow;
+    if (pfTitleEl) pfTitleEl.textContent = defaultTitle;
+    if (pfDescEl) pfDescEl.textContent = defaultDesc;
+    syncModalLock();
+  }
+
+  function handlePaste(e) {
+    if (!modal || !modal.classList.contains('open')) return;
+    var items = (e.clipboardData && e.clipboardData.items) || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.indexOf('image/') === 0) {
+        var file = items[i].getAsFile();
+        if (file) { e.preventDefault(); handleImageUpload(file); return; }
+      }
+    }
+  }
+
+  function isFirstStep() {
+    return currentStep === 'link' || (!!editingProductId && currentStep === 'details');
   }
 
   function wizardStepHTML() {
-    const steps = [
-      { id: 'link', label: '1', title: 'Product link', hint: 'Paste a store link' },
-      { id: 'details', label: '2', title: 'Details', hint: 'Name, price and image' },
-      { id: 'summary', label: '3', title: 'Save', hint: 'Category, tags and notes' }
+    var steps = [
+      { id: 'link', label: '1', title: 'Link' },
+      { id: 'details', label: '2', title: 'Szczegóły' },
+      { id: 'summary', label: '3', title: 'Zapis' }
     ];
-    let html = '<div class="wizard-steps">';
-    steps.forEach(function (s, i) {
-      const isActive = currentStep === s.id;
-      const isCompleted = ['link', 'details', 'summary'].indexOf(currentStep) > i;
+    var order = ['link', 'details', 'summary'];
+    var currentIndex = order.indexOf(currentStep);
+    var html = '<div class="wizard-steps" style="padding-left:0;padding-right:0">';
+    steps.forEach(function (step, i) {
+      var isActive = currentStep === step.id;
+      var isCompleted = currentIndex > i;
       html += '<span class="wizard-step ' + (isCompleted ? 'completed' : '') + (isActive ? ' active' : '') + '" aria-current="' + (isActive ? 'step' : 'false') + '">';
-      if (isCompleted) {
-        html += '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-      } else {
-        html += s.label;
-      }
+      html += isCompleted ? iconSvg('check') : step.label;
       html += '</span>';
       if (i < steps.length - 1) {
-        html += '<svg class="wizard-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-        html += '<span class="wizard-label">' + s.title + '</span>';
+        html += iconSvg('chevron-right', 'wizard-arrow');
+        html += '<span class="wizard-label">' + step.title + '</span>';
       }
     });
     html += '</div>';
@@ -160,131 +249,184 @@
   }
 
   function stepOptionHTML() {
-    const catOpts = categories.map(function (c) {
+    var catOpts = categories.map(function (c) {
       return '<option value="' + esc(c.id) + '"' + (form.categoryId === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>';
     }).join('');
-    const groupOpts = groups.map(function (g) {
+    var groupOpts = groups.map(function (g) {
       return '<option value="' + esc(g.id) + '"' + (form.groupId === g.id ? ' selected' : '') + '>' + esc(g.name) + '</option>';
     }).join('');
-    const currOpts = ['PLN','EUR','USD','GBP','CHF','CZK','SEK','NOK','DKK','HUF','UAH'].map(function (c) {
+    var currOpts = ['PLN', 'EUR', 'USD', 'GBP', 'CHF', 'CZK', 'SEK', 'NOK', 'DKK', 'HUF', 'UAH'].map(function (c) {
       return '<option value="' + c + '"' + (form.currency === c ? ' selected' : '') + '>' + c + '</option>';
     }).join('');
-    const statusOpts = [
-      {v:'TO_CONSIDER',l:'To consider'},{v:'FAVORITE',l:'Favorite'},
-      {v:'TO_BUY',l:'To buy'},{v:'PURCHASED',l:'Purchased'}
-    ].map(function (s){ return '<option value="'+s.v+'"'+(form.status===s.v?' selected':'')+'>'+s.l+'</option>'; }).join('');
-    return { catOpts: catOpts, currOpts: currOpts, statusOpts: statusOpts };
+    var statusOpts = [
+      { v: 'TO_CONSIDER', l: 'Do rozważenia' },
+      { v: 'FAVORITE', l: 'Ulubione' },
+      { v: 'TO_BUY', l: 'Do kupienia' },
+      { v: 'PURCHASED', l: 'Kupione' }
+    ].map(function (s) {
+      return '<option value="' + s.v + '"' + (form.status === s.v ? ' selected' : '') + '>' + s.l + '</option>';
+    }).join('');
+    return { catOpts: catOpts, groupOpts: groupOpts, currOpts: currOpts, statusOpts: statusOpts };
+  }
+
+  function imagePreviewHTML() {
+    if (form.imagePath) {
+      return '<img src="' + esc(productImageUrl(form.imagePath)) + '" alt="Podgląd zdjęcia" style="width:100%;height:100%;object-fit:cover">';
+    }
+    return '<div class="product-image-empty">' + iconSvg('image') + '<span>Brak zdjęcia</span></div>';
   }
 
   function renderForm() {
-    if (!modalBody) return;
-    const opts = stepOptionHTML();
+    if (!modalBody || !form) return;
+    var opts = stepOptionHTML();
 
-    modalBody.innerHTML = ''
-      // Step 1: Link
+    modalBody.innerHTML = wizardStepHTML()
+
+      // Krok 1 — link
       + '<section class="form-step ' + (currentStep === 'link' ? 'active' : '') + '" aria-labelledby="step-link">'
-      +   '<h2 id="step-link" class="sr-only">Product link</h2>'
+      +   '<h2 id="step-link" class="sr-only">Link do produktu</h2>'
       +   '<div class="url-panel">'
-      +     '<label class="label" for="pf-url">Paste a store link</label>'
+      +     '<label class="label" for="pf-url">Wklej link do sklepu</label>'
       +     '<div class="url-row">'
-      +       '<input class="input" id="pf-url" type="url" placeholder="https://store.com/product/..." value="' + esc(form.url) + '">'
-      +       '<button class="btn btn-sm" type="button" id="pf-import" ' + (extracting ? 'disabled' : '') + '>' + (extracting ? 'Reading…' : 'Import details') + '</button>'
+      +       '<input class="input" id="pf-url" type="url" placeholder="https://sklep.pl/produkt/..." value="' + esc(form.url) + '">'
+      +       '<button class="btn btn-sm" type="button" id="pf-import" ' + (extracting ? 'disabled' : '') + '>' + (extracting ? 'Wczytuję…' : 'Pobierz dane') + '</button>'
       +     '</div>'
-      +     '<p class="hint">We’ll try to read the page and fill in the details automatically. You can always enter them by hand.</p>'
+      +     '<p class="hint">Spróbujemy odczytać stronę i uzupełnić dane automatycznie. Zawsze możesz wpisać je ręcznie.</p>'
       +     '<div id="pf-extraction"></div>'
       +     '<div id="pf-duplicate"></div>'
       +   '</div>'
       + '</section>'
 
-      // Step 2: Details
+      // Krok 2 — szczegóły
       + '<section class="form-step ' + (currentStep === 'details' ? 'active' : '') + '" aria-labelledby="step-details">'
-      +   '<h2 id="step-details" class="sr-only">Product details</h2>'
+      +   '<h2 id="step-details" class="sr-only">Szczegóły produktu</h2>'
       +   '<div class="product-form-main">'
       +     '<div>'
-      +       '<label class="label">Image</label>'
+      +       '<label class="label">Zdjęcie</label>'
       +       '<div class="image-upload" id="pf-imageBox">'
-      +         (form.imagePath ? '<img src="' + esc(productImageUrl(form.imagePath)) + '" alt="preview" style="width:100%;height:100%;object-fit:cover">' : '<div class="product-image-empty"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-image"></use></svg><span>No image</span></div>')
+      +         imagePreviewHTML()
       +         (uploading ? '<div class="image-upload-loading"><span class="spinner"></span></div>' : '')
       +       '</div>'
       +       '<input type="file" id="pf-file" accept="image/*" style="display:none">'
-      +       '<div style="display:flex;gap:8px;margin-top:8px">'
-      +         '<button class="btn btn-outline btn-sm" type="button" id="pf-uploadBtn">' + (uploading ? 'Uploading…' : 'Upload image') + '</button>'
-      +         (form.imagePath ? '<button class="btn btn-ghost btn-sm" type="button" id="pf-removeImg">Remove</button>' : '')
+      +       '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'
+      +         '<button class="btn btn-outline btn-sm" type="button" id="pf-uploadBtn">' + (uploading ? 'Wysyłam…' : 'Dodaj zdjęcie') + '</button>'
+      +         (form.imagePath ? '<button class="btn btn-ghost btn-sm" type="button" id="pf-removeImg">Usuń</button>' : '')
       +       '</div>'
       +       '<input type="hidden" id="pf-imagePath" value="' + esc(form.imagePath) + '">'
       +     '</div>'
       +     '<div class="space-y-4">'
-      +       '<div class="form-subhead"><h3>Basic details</h3></div>'
-      +       '<div class="field"><label class="label" for="pf-name">Name <span style="color:hsl(var(--destructive))">*</span></label><input class="input" id="pf-name" value="' + esc(form.name) + '" placeholder="What is this product?"></div>'
-      +       '<div class="field"><label class="label" for="pf-url2">URL <span style="color:hsl(var(--destructive))">*</span></label><input class="input" id="pf-url2" value="' + esc(form.url) + '" placeholder="https://..."></div>'
-      +       '<div class="field"><label class="label" for="pf-description">Description</label><textarea class="textarea" id="pf-description" placeholder="Optional details, size, colour, variant…">' + esc(form.description) + '</textarea></div>'
-      +       '<div class="form-subhead"><h3>Pricing</h3></div>'
-      +       '<div class="grid form-grid">'
-      +         '<div class="field"><label class="label" for="pf-price">Current price</label><input class="input" id="pf-price" type="number" step="0.01" value="' + esc(form.currentPrice) + '" placeholder="0.00"></div>'
-      +         '<div class="field"><label class="label" for="pf-original">Original price</label><input class="input" id="pf-original" type="number" step="0.01" value="' + esc(form.originalPrice) + '" placeholder="Optional"></div>'
+      +       '<div class="form-subhead"><h3>Podstawowe dane</h3></div>'
+      +       '<div class="field"><label class="label" for="pf-name">Nazwa <span class="required-mark">*</span></label><input class="input" id="pf-name" value="' + esc(form.name) + '" placeholder="Co to za produkt?"></div>'
+      +       '<div class="field"><label class="label" for="pf-url2">Adres URL <span class="required-mark">*</span></label><input class="input" id="pf-url2" value="' + esc(form.url) + '" placeholder="https://..."></div>'
+      +       '<div class="field"><label class="label" for="pf-description">Opis</label><textarea class="textarea" id="pf-description" placeholder="Rozmiar, kolor, wariant…">' + esc(form.description) + '</textarea></div>'
+      +       '<div class="form-subhead"><h3>Cena</h3></div>'
+      +       '<div class="form-grid">'
+      +         '<div class="field"><label class="label" for="pf-price">Aktualna cena</label><input class="input" id="pf-price" type="number" step="0.01" min="0" value="' + esc(form.currentPrice) + '" placeholder="0,00"></div>'
+      +         '<div class="field"><label class="label" for="pf-original">Cena pierwotna</label><input class="input" id="pf-original" type="number" step="0.01" min="0" value="' + esc(form.originalPrice) + '" placeholder="Opcjonalnie"></div>'
       +       '</div>'
-      +       '<div class="grid form-grid">'
-      +         '<div class="field"><label class="label" for="pf-currency">Currency</label><select class="select" id="pf-currency">' + opts.currOpts + '</select></div>'
+      +       '<div class="form-grid">'
+      +         '<div class="field"><label class="label" for="pf-currency">Waluta</label><select class="select" id="pf-currency">' + opts.currOpts + '</select></div>'
       +         '<div class="field"><label class="label" for="pf-status">Status</label><select class="select" id="pf-status">' + opts.statusOpts + '</select></div>'
       +       '</div>'
-      +       '<div class="form-subhead"><h3>Organisation</h3></div>'
-      +       '<div class="field"><label class="label" for="pf-store">Store</label><input class="input" id="pf-store" value="' + esc(form.storeName) + '" placeholder="Store name"></div>'
-      +       '<div class="field"><label class="label" for="pf-availability">Availability</label><input class="input" id="pf-availability" value="' + esc(form.availability) + '" placeholder="In stock, pre-order…"></div>'
-      +       '<div class="field"><label class="label" for="pf-tags">Tags</label><input class="input" id="pf-tags" value="' + esc(form.tags.join(', ')) + '" placeholder="comma separated"></div>'
-      +       '<div class="field"><label class="label" for="pf-group">Wspólna grupa</label><select class="select" id="pf-group"><option value="">Brak (tylko Ty)</option>' + groupOpts + '</select></div>'
+      +       '<div class="form-subhead"><h3>Organizacja</h3></div>'
+      +       '<div class="field"><label class="label" for="pf-store">Sklep</label><input class="input" id="pf-store" value="' + esc(form.storeName) + '" placeholder="Nazwa sklepu"></div>'
+      +       '<div class="field"><label class="label" for="pf-availability">Dostępność</label><input class="input" id="pf-availability" value="' + esc(form.availability) + '" placeholder="W magazynie, przedsprzedaż…"></div>'
+      +       '<div class="field"><label class="label" for="pf-group">Wspólna grupa</label><select class="select" id="pf-group"><option value="">Brak (tylko Ty)</option>' + opts.groupOpts + '</select></div>'
       +     '</div>'
       +   '</div>'
       + '</section>'
 
-      // Step 3: Summary
+      // Krok 3 — zapis
       + '<section class="form-step ' + (currentStep === 'summary' ? 'active' : '') + '" aria-labelledby="step-summary">'
-      +   '<h2 id="step-summary" class="sr-only">Save product</h2>'
-      +   '<div class="grid form-grid">'
-      +     '<div class="field"><label class="label" for="pf-category">Category <span style="color:hsl(var(--destructive))">*</span></label><select class="select" id="pf-category"><option value="">Choose a category</option>' + opts.catOpts + '</select></div>'
-      +     '<div class="field"><label class="label" for="pf-notes">Private notes</label><textarea class="textarea no-resize" id="pf-notes" placeholder="Gift idea for…, size, colour, occasion…" rows="3">' + esc(form.notes) + '</textarea></div>'
+      +   '<h2 id="step-summary" class="sr-only">Zapisz produkt</h2>'
+      +   '<div class="form-grid">'
+      +     '<div class="field"><label class="label" for="pf-category">Kategoria <span class="required-mark">*</span></label><select class="select" id="pf-category"><option value="">Wybierz kategorię</option>' + opts.catOpts + '</select></div>'
+      +     '<div class="field"><label class="label" for="pf-notes">Prywatne notatki</label><textarea class="textarea no-resize" id="pf-notes" placeholder="Prezent dla…, rozmiar, kolor, okazja…" rows="3">' + esc(form.notes) + '</textarea></div>'
       +   '</div>'
-      +   '<div class="field" style="margin-top:8px"><label class="label" for="pf-tags">Tags</label><div class="tag-input" id="pf-tags-box"><div class="tag-chips" id="pf-tag-chips"></div><input id="pf-tags" type="text" value="" placeholder="Type a tag and press Enter"></div></div>'
+      +   '<div class="field" style="margin-top:14px">'
+      +     '<label class="label" for="pf-tags-input">Tagi</label>'
+      +     '<div class="tag-input" id="pf-tags-box"><div class="tag-chips" id="pf-tag-chips"></div><input id="pf-tags-input" type="text" placeholder="Wpisz tag i naciśnij Enter"></div>'
+      +   '</div>'
       +   '<div class="preview-card">'
-      +     '<div class="preview-head">'
-      +       '<h3>Preview</h3>'
-      +       '<span class="muted small">Read-only summary</span>'
-      +     '</div>'
+      +     '<div class="preview-head"><h3>Podgląd</h3><span class="muted small">Tak zapiszesz produkt</span></div>'
       +     '<div class="preview-body">'
       +       '<div class="preview-row">'
-      +         '<div class="preview-thumb" id="pf-preview-thumb">' + (form.imagePath ? '<img src="' + esc(productImageUrl(form.imagePath)) + '" alt="preview" style="width:100%;height:100%;object-fit:cover">' : '<div class="product-image-empty" style="width:48px;height:48px"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-image"></use></svg><span style="display:none">No image</span></div>') + '</div>'
-      +         '<div class="preview-info">'
-      +           '<strong id="pf-preview-name">' + esc(form.name) + '</strong>'
-      +           '<small id="pf-preview-store">' + (form.storeName ? form.storeName : '—') + '</small>'
-      +         '</div>'
+      +         '<div class="preview-thumb" id="pf-preview-thumb">' + imagePreviewHTML() + '</div>'
+      +         '<div class="preview-info"><strong id="pf-preview-name">' + esc(form.name) + '</strong><small id="pf-preview-store">' + esc(form.storeName || '—') + '</small></div>'
       +       '</div>'
       +       '<div class="preview-meta">'
-      +         '<span><span class="cat-dot" style="background:hsl(var(--muted-foreground))"></span> <span id="pf-preview-category">' + (form.categoryId ? (categories.find(function(c){return c.id===form.categoryId;})||{name:'—'}).name : '—') + '</span></span>'
-      +         '<span>' + (form.currentPrice ? parseFloat(form.currentPrice).toFixed(2) + ' ' + form.currency : '—') + '</span>'
-      +         '<span>' + form.status + '</span>'
+      +         '<span><span class="cat-dot" style="background:' + esc(categoryColor(form.categoryId)) + '"></span> <span id="pf-preview-category">' + esc(categoryName(form.categoryId)) + '</span></span>'
+      +         '<span id="pf-preview-price">' + esc(pricePreview()) + '</span>'
+      +         '<span id="pf-preview-status">' + esc(statusLabel(form.status)) + '</span>'
       +       '</div>'
       +       '<div id="pf-preview-tags" class="preview-meta" style="margin-top:6px"></div>'
       +     '</div>'
       +   '</div>'
       + '</section>';
 
-    // wire events
-    const importBtn = document.getElementById('pf-import');
-    if (importBtn) importBtn.addEventListener('click', doImport);
-    const urlInput = document.getElementById('pf-url');
-    if (urlInput) urlInput.addEventListener('input', function () { form.url = urlInput.value; const u2=document.getElementById('pf-url2'); if (u2) u2.value = urlInput.value; });
-
-    const uploadBtn = document.getElementById('pf-uploadBtn');
-    const fileInput = document.getElementById('pf-file');
-    if (uploadBtn && fileInput) {
-      uploadBtn.addEventListener('click', function () { fileInput.click(); });
-      fileInput.addEventListener('change', function () { if (fileInput.files && fileInput.files[0]) handleImageUpload(fileInput.files[0]); fileInput.value=''; });
-    }
-    const removeImg = document.getElementById('pf-removeImg');
-    if (removeImg) removeImg.addEventListener('click', function () { form.imagePath=''; form.imageSourceUrl=''; renderForm(); });
-
-    bindFormFields();
+    wireFormEvents();
     renderTags();
     updatePreview();
+    updateWizardFooter();
+  }
+
+  function categoryName(id) {
+    if (!id) return '—';
+    for (var i = 0; i < categories.length; i++) {
+      if (categories[i].id === id) return categories[i].name;
+    }
+    return '—';
+  }
+
+  function categoryColor(id) {
+    for (var i = 0; i < categories.length; i++) {
+      if (categories[i].id === id) return categories[i].color || '#D9A3B0';
+    }
+    return '#D9A3B0';
+  }
+
+  function statusLabel(status) {
+    var labels = { TO_CONSIDER: 'Do rozważenia', FAVORITE: 'Ulubione', TO_BUY: 'Do kupienia', PURCHASED: 'Kupione' };
+    return labels[status] || status || '—';
+  }
+
+  function pricePreview() {
+    if (!form.currentPrice) return '—';
+    var value = parseFloat(form.currentPrice);
+    if (isNaN(value)) return '—';
+    return value.toFixed(2) + ' ' + form.currency;
+  }
+
+  function wireFormEvents() {
+    var importBtn = document.getElementById('pf-import');
+    if (importBtn) importBtn.addEventListener('click', doImport);
+
+    var urlInput = document.getElementById('pf-url');
+    if (urlInput) {
+      urlInput.addEventListener('input', function () {
+        form.url = urlInput.value;
+        var url2 = document.getElementById('pf-url2');
+        if (url2) url2.value = urlInput.value;
+        updateWizardFooter();
+      });
+    }
+
+    var uploadBtn = document.getElementById('pf-uploadBtn');
+    var fileInput = document.getElementById('pf-file');
+    if (uploadBtn && fileInput) {
+      uploadBtn.addEventListener('click', function () { fileInput.click(); });
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files[0]) handleImageUpload(fileInput.files[0]);
+        fileInput.value = '';
+      });
+    }
+
+    var removeImg = document.getElementById('pf-removeImg');
+    if (removeImg) removeImg.addEventListener('click', function () {
+      form.imagePath = '';
+      form.imageSourceUrl = '';
+      renderForm();
+    });
 
     var imageBox = document.getElementById('pf-imageBox');
     if (imageBox && !imageBox.dataset.dndBound) {
@@ -299,241 +441,304 @@
       });
     }
 
-    updateWizardFooter();
+    bindFormFields();
+  }
+
+  function bindFormFields() {
+    function bind(id, key) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var handler = function () { form[key] = el.value; updateWizardFooter(); };
+      el.addEventListener('input', handler);
+      if (el.tagName === 'SELECT') el.addEventListener('change', handler);
+    }
+    bind('pf-name', 'name');
+    bind('pf-url2', 'url');
+    bind('pf-price', 'currentPrice');
+    bind('pf-original', 'originalPrice');
+    bind('pf-currency', 'currency');
+    bind('pf-status', 'status');
+    bind('pf-category', 'categoryId');
+    bind('pf-group', 'groupId');
+    bind('pf-store', 'storeName');
+    bind('pf-availability', 'availability');
+    bind('pf-description', 'description');
+    bind('pf-notes', 'notes');
   }
 
   function renderTags() {
-    const box = document.getElementById('pf-tag-chips');
-    const input = document.getElementById('pf-tags-input') || document.getElementById('pf-tags');
+    var box = document.getElementById('pf-tag-chips');
     if (!box) return;
     box.innerHTML = '';
     (form.tags || []).forEach(function (tag) {
-      const el = document.createElement('span');
-      el.className = 'tag-chip';
-      el.textContent = tag;
-      const btn = document.createElement('button');
-      btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-      btn.setAttribute('aria-label', 'Remove ' + esc(tag));
-      btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
+      var chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.textContent = tag;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.innerHTML = iconSvg('x');
+      btn.setAttribute('aria-label', 'Usuń tag ' + tag);
+      btn.addEventListener('click', function () {
         form.tags = (form.tags || []).filter(function (t) { return t !== tag; });
-        renderForm();
+        renderTags();
+        updatePreview();
       });
-      el.appendChild(btn);
-      box.appendChild(el);
+      chip.appendChild(btn);
+      box.appendChild(chip);
     });
-    const tagInput = document.getElementById('pf-tags-input');
-    if (tagInput) {
-      tagInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ',') {
-          e.preventDefault();
-          addTagFromInput();
-        }
-        if (e.key === 'Backspace' && !tagInput.value && (form.tags || []).length) {
-          form.tags.pop();
-          renderForm();
-        }
-      });
-      tagInput.addEventListener('blur', addTagFromInput);
-    }
+
+    var input = document.getElementById('pf-tags-input');
+    if (!input) return;
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        addTagFromInput();
+      } else if (e.key === 'Backspace' && !input.value && (form.tags || []).length) {
+        form.tags.pop();
+        renderTags();
+        updatePreview();
+      }
+    });
+    input.addEventListener('blur', addTagFromInput);
   }
 
   function addTagFromInput() {
-    const input = document.getElementById('pf-tags-input');
+    var input = document.getElementById('pf-tags-input');
     if (!input || !input.value.trim()) return;
-    const parts = input.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
-    for (var i = 0; i < parts.length; i++) {
-      if ((form.tags || []).indexOf(parts[i]) === -1) {
-        (form.tags || []).push(parts[i].slice(0, 40));
-      }
-    }
-    if ((form.tags || []).length > 15) {
-      form.tags = (form.tags || []).slice(0, 15);
-    }
+    var parts = input.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+    parts.forEach(function (part) {
+      var value = part.slice(0, 40);
+      if ((form.tags || []).indexOf(value) === -1) (form.tags || []).push(value);
+    });
+    form.tags = (form.tags || []).slice(0, 15);
     input.value = '';
-    renderForm();
+    renderTags();
+    updatePreview();
   }
 
   function updatePreview() {
-    const nameEl = document.getElementById('pf-preview-name');
-    const storeEl = document.getElementById('pf-preview-store');
-    const catEl = document.getElementById('pf-preview-category');
-    const tagsEl = document.getElementById('pf-preview-tags');
-    if (nameEl) nameEl.textContent = esc(form.name) || '—';
-    if (storeEl) storeEl.textContent = esc(form.storeName) || '—';
-    if (catEl) {
-      var catName = '—';
-      if (form.categoryId) {
-        var c = categories.find(function (cat) { return cat.id === form.categoryId; });
-        if (c) catName = c.name;
-      }
-      catEl.textContent = catName;
-    }
+    var nameEl = document.getElementById('pf-preview-name');
+    var storeEl = document.getElementById('pf-preview-store');
+    var catEl = document.getElementById('pf-preview-category');
+    var priceEl = document.getElementById('pf-preview-price');
+    var statusEl = document.getElementById('pf-preview-status');
+    var tagsEl = document.getElementById('pf-preview-tags');
+    if (nameEl) nameEl.textContent = form.name || '—';
+    if (storeEl) storeEl.textContent = form.storeName || '—';
+    if (catEl) catEl.textContent = categoryName(form.categoryId);
+    if (priceEl) priceEl.textContent = pricePreview();
+    if (statusEl) statusEl.textContent = statusLabel(form.status);
     if (tagsEl) {
       tagsEl.innerHTML = '';
-      if ((form.tags || []).length) {
-        (form.tags || []).forEach(function (tag) {
-          var span = document.createElement('span');
-          span.className = 'tag-pill';
-          span.textContent = tag;
-          tagsEl.appendChild(span);
-        });
-      }
+      (form.tags || []).forEach(function (tag) {
+        var span = document.createElement('span');
+        span.className = 'tag-pill';
+        span.textContent = tag;
+        tagsEl.appendChild(span);
+      });
     }
   }
 
   function validateStep() {
     var errors = [];
     if (currentStep === 'link') {
-      if (!form.url.trim()) errors.push('Product URL is required.');
-      else if (!/^https?:\/\//i.test(form.url.trim())) errors.push('Use a full HTTP or HTTPS link.');
+      if (!form.url.trim()) errors.push('Podaj link do produktu.');
+      else if (!/^https?:\/\//i.test(form.url.trim())) errors.push('Użyj pełnego linku zaczynającego się od http:// lub https://.');
     } else if (currentStep === 'details') {
-      if (!form.name.trim()) errors.push('Product name is required.');
+      if (!form.name.trim()) errors.push('Podaj nazwę produktu.');
       if (form.currentPrice.trim()) {
-        var v = parseFloat(form.currentPrice);
-        if (isNaN(v) || v < 0) errors.push('Enter a valid price.');
+        var price = parseFloat(form.currentPrice);
+        if (isNaN(price) || price < 0) errors.push('Podaj poprawną cenę.');
       }
       if (form.originalPrice.trim()) {
-        var v = parseFloat(form.originalPrice);
-        if (isNaN(v) || v < 0) errors.push('Enter a valid original price.');
+        var original = parseFloat(form.originalPrice);
+        if (isNaN(original) || original < 0) errors.push('Podaj poprawną cenę pierwotną.');
       }
     } else if (currentStep === 'summary') {
-      if (!form.categoryId) errors.push('Choose a category.');
+      if (!form.categoryId) errors.push('Wybierz kategorię.');
     }
     return errors;
   }
 
   function goNext() {
     var errors = validateStep();
-    if (errors.length) {
-      toast(errors[0], 'error');
-      return;
-    }
+    if (errors.length) { toast(errors[0], 'error'); return; }
     if (currentStep === 'link') currentStep = 'details';
     else if (currentStep === 'details') currentStep = 'summary';
     renderForm();
+    var firstInput = modalBody ? modalBody.querySelector('.form-step.active .input, .form-step.active .select, .form-step.active textarea') : null;
+    if (firstInput) firstInput.focus();
   }
 
   function goBack() {
-    if (currentStep === 'details') currentStep = 'link';
+    if (currentStep === 'details' && !editingProductId) currentStep = 'link';
     else if (currentStep === 'summary') currentStep = 'details';
     renderForm();
   }
 
   function updateWizardFooter() {
-    if (!modalFooter) return;
-    var isLast = currentStep === 'summary';
-    var isFirst = currentStep === 'link';
     var saveBtn = document.getElementById('pfSave');
     var nextBtn = document.getElementById('pfNext');
     var backBtn = document.getElementById('pfBack');
+    var isLast = currentStep === 'summary';
 
-    if (saveBtn) saveBtn.style.display = isLast ? 'inline-flex' : 'none';
+    if (saveBtn) {
+      saveBtn.style.display = isLast ? 'inline-flex' : 'none';
+      saveBtn.textContent = editingProductId ? 'Zapisz zmiany' : 'Dodaj produkt';
+      saveBtn.disabled = saving;
+    }
     if (nextBtn) {
       nextBtn.style.display = isLast ? 'none' : 'inline-flex';
-      nextBtn.disabled = (validateStep().length > 0);
+      nextBtn.disabled = saving || validateStep().length > 0;
     }
     if (backBtn) {
-      backBtn.style.display = isFirst ? 'none' : 'inline-flex';
+      backBtn.style.display = isFirstStep() ? 'none' : 'inline-flex';
       backBtn.disabled = saving;
+    }
+    if (pfHintEl) {
+      var hints = {
+        link: 'Wklej link, aby pobrać dane',
+        details: 'Uzupełnij najważniejsze informacje',
+        summary: 'Sprawdź dane przed zapisaniem'
+      };
+      pfHintEl.innerHTML = iconSvg('sparkles') + ' ' + (hints[currentStep] || hints.summary);
     }
   }
 
-  function bindFormFields() {
-    function v(id, key) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const handler = function () { form[key] = el.value; };
-      el.addEventListener('input', handler);
-      if (el.tagName === 'SELECT') el.addEventListener('change', handler);
+  async function handleImageUpload(file) {
+    if (!file || !file.type || file.type.indexOf('image/') !== 0) {
+      toast('Wybierz plik graficzny.', 'error');
+      return;
     }
-    v('pf-name','name'); v('pf-url2','url'); v('pf-price','currentPrice'); v('pf-original','originalPrice');
-    v('pf-currency','currency'); v('pf-status','status'); v('pf-category','categoryId'); v('pf-group','groupId');
-    v('pf-store','storeName'); v('pf-availability','availability');
-    v('pf-description','description'); v('pf-notes','notes');
+    uploading = true;
+    renderForm();
+    try {
+      var fd = new FormData();
+      fd.append('image', file);
+      var res = await fetch('/api/uploads/image', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': csrfToken },
+        body: fd,
+        credentials: 'same-origin'
+      });
+      var data = await res.json().catch(function () { return null; });
+      if (!res.ok) throw new Error((data && data.error && data.error.message) || 'Nie udało się wysłać zdjęcia.');
+      form.imagePath = (data && (data.imagePath || data.path)) || form.imagePath;
+      toast('Zdjęcie zostało dodane.', 'success');
+    } catch (err) {
+      toast(err.message || 'Nie udało się wysłać zdjęcia.', 'error');
+    } finally {
+      uploading = false;
+      renderForm();
+    }
   }
 
   async function doImport() {
     if (extracting) return;
-    const urlInput = document.getElementById('pf-url');
-    const url = (urlInput ? urlInput.value : form.url).trim();
-    if (!url) { toast('Paste a product link first.', 'error'); return; }
-    if (!/^https?:\/\//i.test(url)) { toast('Use a full link starting with http:// or https://.', 'error'); return; }
+    var urlInput = document.getElementById('pf-url');
+    var url = (urlInput ? urlInput.value : form.url).trim();
+    if (!url) { toast('Najpierw wklej link do produktu.', 'error'); return; }
+    if (!/^https?:\/\//i.test(url)) { toast('Użyj pełnego linku zaczynającego się od http:// lub https://.', 'error'); return; }
+
+    form.url = url;
     extracting = true;
     renderForm();
     try {
-      const res = await api('/api/extract', { method: 'POST', body: { url: url } });
-      form.url = (res.data && res.data.url) || url;
-      if (res.data) {
-        if (res.data.name != null) form.name = res.data.name;
-        if (res.data.description != null) form.description = res.data.description;
-        if (res.data.imagePath != null) form.imagePath = res.data.imagePath;
-        if (res.data.imageSourceUrl != null) form.imageSourceUrl = res.data.imageSourceUrl;
-        if (res.data.currentPrice != null) form.currentPrice = String(res.data.currentPrice);
-        if (res.data.originalPrice != null) form.originalPrice = String(res.data.originalPrice);
-        if (res.data.currency) form.currency = res.data.currency;
-        if (res.data.availability != null) form.availability = res.data.availability;
-        if (res.data.storeName != null) form.storeName = res.data.storeName;
-        if (res.data.storeDomain != null) form.storeDomain = res.data.storeDomain;
-        if (res.data.suggestedCategoryId) form.categoryId = res.data.suggestedCategoryId;
-      }
-      const ex = document.getElementById('pf-extraction');
-      if (ex) {
-        const cls = res.success ? 'extraction-panel success' : 'extraction-panel warning';
-        let html = '<div class="' + cls + '"><div class="extraction-top">';
-        html += res.success ? '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-circle-check"></use></svg>' : '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-circle-alert"></use></svg>';
-        html += '<div class="extraction-body"><div class="extraction-title">' + (res.success ? 'Details found — review before saving' : (res.error || 'Limited details found')) + '</div>';
-        if (res.strategies && res.strategies.length) html += '<div class="extraction-strategies">Detected with ' + res.strategies.join(' · ') + '</div>';
-        if (res.warnings && res.warnings.length) {
-          html += '<ul class="extraction-warnings">' + res.warnings.map(function (w){ return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>';
-        }
-        html += '</div></div></div>';
-        ex.innerHTML = html;
-      }
-      try {
-        const dup = await api('/api/products/check-url?url=' + encodeURIComponent(form.url), { method: 'GET' });
-        const dd = document.getElementById('pf-duplicate');
-        if (dd && dup.duplicate) {
-          dd.innerHTML = '<div class="duplicate-warning"><span>!</span><div class="duplicate-warning-body"><strong>This product is already in your vault.</strong><span>' + esc(dup.duplicate.name) + '</span></div></div>';
-        } else if (dd) dd.innerHTML = '';
-      } catch (e) {}
-      toast(res.success ? 'Product details found' : 'Automatic extraction was limited', res.success ? 'success' : 'warning');
-    } catch (err) {
-      toast(err.message || 'Could not read this link', 'error');
-      const ex = document.getElementById('pf-extraction');
-      if (ex) ex.innerHTML = '<div class="extraction-panel warning"><div class="extraction-top"><span>!</span><div class="extraction-body"><div class="extraction-title">' + esc(err.message || 'Could not read this link') + '</div></div></div></div>';
-    } finally {
+      var res = await api('/api/extract', { method: 'POST', body: { url: url } });
+      var data = res.data || {};
+      form.url = data.url || url;
+      if (data.name != null) form.name = data.name;
+      if (data.description != null) form.description = data.description;
+      if (data.imagePath != null) form.imagePath = data.imagePath;
+      if (data.imageSourceUrl != null) form.imageSourceUrl = data.imageSourceUrl;
+      if (data.currentPrice != null) form.currentPrice = String(data.currentPrice);
+      if (data.originalPrice != null) form.originalPrice = String(data.originalPrice);
+      if (data.currency) form.currency = data.currency;
+      if (data.availability != null) form.availability = data.availability;
+      if (data.storeName != null) form.storeName = data.storeName;
+      if (data.storeDomain != null) form.storeDomain = data.storeDomain;
+      if (data.suggestedCategoryId) form.categoryId = data.suggestedCategoryId;
+
       extracting = false;
       renderForm();
+      showExtractionResult(res);
+      await checkDuplicate(form.url);
+      toast(res.success ? 'Znaleziono dane produktu.' : 'Udało się odczytać tylko część danych.', res.success ? 'success' : 'warning');
       if (currentStep === 'link') {
-        goNext();
+        if (validateStep().length === 0) { currentStep = 'details'; renderForm(); }
       }
+    } catch (err) {
+      extracting = false;
+      renderForm();
+      showExtractionResult({ success: false, error: err.message || 'Nie udało się odczytać linku.' });
+      toast(err.message || 'Nie udało się odczytać linku.', 'error');
+    }
+  }
+
+  function showExtractionResult(res) {
+    var box = document.getElementById('pf-extraction');
+    if (!box) return;
+    var cls = res.success ? 'extraction-panel success' : 'extraction-panel warning';
+    var title = res.success ? 'Znaleziono dane — sprawdź je przed zapisaniem' : (res.error || 'Odczytano ograniczone dane');
+    var html = '<div class="' + cls + '"><div class="extraction-top">';
+    html += iconSvg(res.success ? 'circle-check' : 'circle-alert');
+    html += '<div class="extraction-body"><div class="extraction-title">' + esc(title) + '</div>';
+    if (res.strategies && res.strategies.length) {
+      html += '<div class="extraction-strategies">Wykryto: ' + esc(res.strategies.join(' · ')) + '</div>';
+    }
+    if (res.warnings && res.warnings.length) {
+      html += '<ul class="extraction-warnings">' + res.warnings.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>';
+    }
+    html += '</div></div></div>';
+    box.innerHTML = html;
+  }
+
+  async function checkDuplicate(url) {
+    var box = document.getElementById('pf-duplicate');
+    if (!box) return;
+    try {
+      var res = await api('/api/products/check-url?url=' + encodeURIComponent(url), { method: 'GET' });
+      if (res.duplicate) {
+        box.innerHTML = '<div class="duplicate-warning"><span>!</span><div class="duplicate-warning-body"><strong>Ten produkt jest już w Twojej kolekcji.</strong><span>' + esc(res.duplicate.name) + '</span></div></div>';
+      } else {
+        box.innerHTML = '';
+      }
+    } catch (e) {
+      box.innerHTML = '';
     }
   }
 
   async function saveProduct() {
     if (saving) return;
-    form.name = document.getElementById('pf-name').value.trim();
-    form.url = document.getElementById('pf-url2').value.trim();
-    form.currentPrice = document.getElementById('pf-price').value.trim();
-    form.originalPrice = document.getElementById('pf-original').value.trim();
-    form.currency = document.getElementById('pf-currency').value;
-    form.status = document.getElementById('pf-status').value;
-    form.categoryId = document.getElementById('pf-category').value;
-    form.groupId = document.getElementById('pf-group').value;
-    form.storeName = document.getElementById('pf-store').value.trim();
-    form.availability = document.getElementById('pf-availability').value.trim();
-    form.description = document.getElementById('pf-description').value.trim();
-    form.notes = document.getElementById('pf-notes').value.trim();
-    form.imagePath = document.getElementById('pf-imagePath').value;
+    form.name = (document.getElementById('pf-name') || {}).value || '';
+    form.url = (document.getElementById('pf-url2') || {}).value || '';
+    form.currentPrice = (document.getElementById('pf-price') || {}).value || '';
+    form.originalPrice = (document.getElementById('pf-original') || {}).value || '';
+    form.currency = (document.getElementById('pf-currency') || {}).value || 'PLN';
+    form.status = (document.getElementById('pf-status') || {}).value || 'TO_CONSIDER';
+    form.categoryId = (document.getElementById('pf-category') || {}).value || '';
+    form.groupId = (document.getElementById('pf-group') || {}).value || '';
+    form.storeName = (document.getElementById('pf-store') || {}).value || '';
+    form.availability = (document.getElementById('pf-availability') || {}).value || '';
+    form.description = (document.getElementById('pf-description') || {}).value || '';
+    form.notes = (document.getElementById('pf-notes') || {}).value || '';
+    form.imagePath = (document.getElementById('pf-imagePath') || {}).value || '';
 
-    if (!form.name) { toast('Product name is required.', 'error'); return; }
-    if (!form.url) { toast('Product URL is required.', 'error'); return; }
-    if (!/^https?:\/\//i.test(form.url)) { toast('Use a full HTTP or HTTPS link.', 'error'); return; }
-    if (!editingProductId && !form.categoryId) { toast('Choose a category.', 'error'); return; }
+    form.name = form.name.trim();
+    form.url = form.url.trim();
+    form.currentPrice = String(form.currentPrice).trim();
+    form.originalPrice = String(form.originalPrice).trim();
+    form.storeName = form.storeName.trim();
+    form.availability = form.availability.trim();
+    form.description = form.description.trim();
+    form.notes = form.notes.trim();
 
-    const payload = {
+    if (!form.name) { toast('Podaj nazwę produktu.', 'error'); return; }
+    if (!form.url) { toast('Podaj link do produktu.', 'error'); return; }
+    if (!/^https?:\/\//i.test(form.url)) { toast('Użyj pełnego linku zaczynającego się od http:// lub https://.', 'error'); return; }
+    if (!form.categoryId) { toast('Wybierz kategorię.', 'error'); return; }
+
+    var payload = {
       name: form.name,
       url: form.url,
       description: form.description || null,
@@ -549,90 +754,65 @@
       notes: form.notes || null,
       storeName: form.storeName || null,
       storeDomain: form.storeDomain || null,
-      tags: form.tags
+      tags: form.tags || []
     };
 
     saving = true;
-    const saveBtn = document.getElementById('pfSave');
-    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+    updateWizardFooter();
     try {
-      const savePath = editingProductId ? '/api/products/' + editingProductId : '/api/products';
-      const saveMethod = editingProductId ? 'PATCH' : 'POST';
-      await api(savePath, { method: saveMethod, body: payload });
-      toast(editingProductId ? 'Product updated' : 'Product added to your vault', 'success');
+      var path = editingProductId ? '/api/products/' + editingProductId : '/api/products';
+      var method = editingProductId ? 'PATCH' : 'POST';
+      await api(path, { method: method, body: payload });
+      toast(editingProductId ? 'Produkt został zaktualizowany.' : 'Produkt dodany do kolekcji.', 'success');
       editingProductId = null;
       closeModal();
       setTimeout(function () { window.location.reload(); }, 400);
     } catch (err) {
-      toast(err.message || 'Could not save this product.', 'error');
+      toast(err.message || 'Nie udało się zapisać produktu.', 'error');
       if (err.details && err.details.fieldErrors) {
-        const fe = err.details.fieldErrors;
-        const first = Object.keys(fe)[0];
-        if (first) toast(fe[first][0], 'error');
+        var keys = Object.keys(err.details.fieldErrors);
+        if (keys.length && err.details.fieldErrors[keys[0]][0]) toast(err.details.fieldErrors[keys[0]][0], 'error');
       }
     } finally {
       saving = false;
-      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = editingProductId ? 'Save changes' : 'Add product'; }
+      updateWizardFooter();
     }
+  }
+
+  async function loadFormData() {
+    var results = await Promise.all([
+      api('/api/categories', { method: 'GET' }),
+      api('/api/settings', { method: 'GET' }),
+      api('/api/category-groups', { method: 'GET' })
+    ]);
+    categories = (results[0] && (results[0].categories || results[0])) || [];
+    if (!Array.isArray(categories)) categories = [];
+    groups = (results[2] && (results[2].groups || results[2])) || [];
+    if (!Array.isArray(groups)) groups = [];
+    if (results[1] && results[1].settings) settings = results[1].settings;
   }
 
   async function openProductModal() {
     if (modal && modal.classList.contains('open')) return;
     resetForm();
     currentStep = 'link';
+    editingProductId = null;
+    if (pfEyebrowEl) pfEyebrowEl.textContent = defaultEyebrow;
+    if (pfTitleEl) pfTitleEl.textContent = defaultTitle;
+    if (pfDescEl) pfDescEl.textContent = defaultDesc;
     openModal();
-    if (modal) modal.addEventListener('paste', handlePaste);
-    const body = document.getElementById('pfBody');
-    if (body) body.innerHTML = '<div class="muted small">Loading…</div>';
+    if (modalBody) modalBody.innerHTML = '<div class="muted small">Ładowanie…</div>';
     try {
-      const [cats, sets, grps] = await Promise.all([
-        api('/api/categories', { method: 'GET' }),
-        api('/api/settings', { method: 'GET' }),
-        api('/api/category-groups', { method: 'GET' })
-      ]);
-      categories = (cats.categories || cats || []);
-      groups = (grps.groups || grps || []);
-      if (sets.settings) settings = sets.settings;
+      await loadFormData();
       form.currency = settings.currency || 'PLN';
-      form.categoryId = (categories.find(function (c){ return c.slug === 'other'; }) || categories[0] || {}).id || '';
-    } catch (e) {
-      toast('Could not load categories.', 'error');
+      var other = categories.filter(function (c) { return c.slug === 'other'; })[0];
+      form.categoryId = (other || categories[0] || {}).id || '';
+    } catch (err) {
+      toast('Nie udało się załadować kategorii.', 'error');
     }
     renderForm();
-    updateWizardFooter();
-
-    const saveBtn = document.getElementById('pfSave');
-    const newBtn = saveBtn.cloneNode(true);
-    saveBtn.parentNode.replaceChild(newBtn, saveBtn);
-    newBtn.id = 'pfSave';
-    newBtn.addEventListener('click', saveProduct);
-
-    // Ensure wizard nav buttons exist in the footer (listeners attached once)
-    var footer = saveBtn ? saveBtn.parentNode : null;
-    if (footer) {
-      var nextBtn = document.getElementById('pfNext');
-      if (!nextBtn) {
-        nextBtn = document.createElement('button');
-        nextBtn.id = 'pfNext';
-        nextBtn.type = 'button';
-        nextBtn.className = 'btn btn-sm';
-        nextBtn.innerHTML = 'Next <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-        footer.insertBefore(nextBtn, saveBtn);
-        nextBtn.addEventListener('click', goNext);
-      }
-      var backBtn = document.getElementById('pfBack');
-      if (!backBtn) {
-        backBtn = document.createElement('button');
-        backBtn.id = 'pfBack';
-        backBtn.type = 'button';
-        backBtn.className = 'btn btn-outline btn-sm';
-        backBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 6 9 12 15 18"></polyline></svg> Back';
-        footer.insertBefore(backBtn, nextBtn);
-        backBtn.addEventListener('click', goBack);
-      }
-    }
-
-    updateWizardFooter();
+    var urlInput = document.getElementById('pf-url');
+    if (urlInput) urlInput.focus();
   }
 
   async function openEditProduct(id) {
@@ -641,423 +821,546 @@
     resetForm();
     currentStep = 'details';
     openModal();
-    if (modal) modal.addEventListener('paste', handlePaste);
-    const body = document.getElementById('pfBody');
-    if (body) body.innerHTML = '<div class="muted small">Loading…</div>';
+    if (modalBody) modalBody.innerHTML = '<div class="muted small">Ładowanie…</div>';
     try {
-      const [cats, sets, grps, prod] = await Promise.all([
-        api('/api/categories', { method: 'GET' }),
-        api('/api/settings', { method: 'GET' }),
-        api('/api/category-groups', { method: 'GET' }),
+      var results = await Promise.all([
+        loadFormData(),
         api('/api/products/' + id, { method: 'GET' })
       ]);
-      categories = (cats.categories || cats || []);
-      groups = (grps.groups || grps || []);
-      if (sets.settings) settings = sets.settings;
-      const p = prod.product || prod;
-      form.url = p.url || '';
-      form.name = p.name || '';
-      form.description = p.description || '';
-      form.imagePath = p.imageUrl || '';
-      form.imageSourceUrl = p.imageSourceUrl || '';
-      form.currentPrice = p.currentPrice != null ? String(p.currentPrice) : '';
-      form.originalPrice = p.originalPrice != null ? String(p.originalPrice) : '';
-      form.currency = p.currency || 'PLN';
-      form.availability = p.availability || '';
-      form.status = p.status || 'TO_CONSIDER';
-      form.notes = p.notes || '';
-      form.storeName = (p.store && p.store.name) || '';
-      form.storeDomain = (p.store && p.store.domain) || '';
-      form.categoryId = (p.category && p.category.id) || '';
-      form.groupId = p.groupId || '';
-      form.tags = Array.isArray(p.tags) ? p.tags.slice() : [];
-    } catch (e) {
-      toast('Could not load product.', 'error');
+      var product = results[1].product || results[1];
+      form.url = product.url || '';
+      form.name = product.name || '';
+      form.description = product.description || '';
+      form.imagePath = product.imageUrl || '';
+      form.imageSourceUrl = product.imageSourceUrl || '';
+      form.currentPrice = product.currentPrice != null ? String(product.currentPrice) : '';
+      form.originalPrice = product.originalPrice != null ? String(product.originalPrice) : '';
+      form.currency = product.currency || settings.currency || 'PLN';
+      form.availability = product.availability || '';
+      form.status = product.status || 'TO_CONSIDER';
+      form.notes = product.notes || '';
+      form.storeName = (product.store && product.store.name) || '';
+      form.storeDomain = (product.store && product.store.domain) || '';
+      form.categoryId = (product.category && product.category.id) || '';
+      form.groupId = product.groupId || '';
+      form.tags = Array.isArray(product.tags) ? product.tags.slice() : [];
+    } catch (err) {
+      toast('Nie udało się załadować produktu.', 'error');
       closeModal();
       return;
     }
-    if (pfEyebrowEl) pfEyebrowEl.textContent = 'Edit product';
-    if (pfTitleEl) pfTitleEl.textContent = 'Edit product';
-    if (pfDescEl) pfDescEl.textContent = 'Update details and save.';
+    if (pfEyebrowEl) pfEyebrowEl.textContent = 'Edycja produktu';
+    if (pfTitleEl) pfTitleEl.textContent = 'Edytuj produkt';
+    if (pfDescEl) pfDescEl.textContent = 'Zaktualizuj dane i zapisz zmiany.';
     renderForm();
-    updateWizardFooter();
-    const saveBtn = document.getElementById('pfSave');
-    if (saveBtn) {
-      const newBtn = saveBtn.cloneNode(true);
-      saveBtn.parentNode.replaceChild(newBtn, saveBtn);
-      newBtn.id = 'pfSave';
-      newBtn.textContent = 'Save changes';
-      newBtn.addEventListener('click', saveProduct);
-    }
   }
 
-  ['quickAddBtn','quickAddBtn2','quickAddBtn3','quickAddBtn4'].forEach(function (id) {
-    const el = document.getElementById(id);
+  ['quickAddBtn', 'quickAddBtn2', 'quickAddBtn3', 'quickAddBtn4'].forEach(function (id) {
+    var el = document.getElementById(id);
     if (el) el.addEventListener('click', openProductModal);
   });
-  const pfClose = document.getElementById('pfClose');
-  const pfCancel = document.getElementById('pfCancel');
+
+  var pfClose = document.getElementById('pfClose');
+  var pfCancel = document.getElementById('pfCancel');
+  var pfNext = document.getElementById('pfNext');
+  var pfBack = document.getElementById('pfBack');
+  var pfSave = document.getElementById('pfSave');
   if (pfClose) pfClose.addEventListener('click', closeModal);
   if (pfCancel) pfCancel.addEventListener('click', closeModal);
+  if (pfNext) pfNext.addEventListener('click', goNext);
+  if (pfBack) pfBack.addEventListener('click', goBack);
+  if (pfSave) pfSave.addEventListener('click', saveProduct);
 
-  // Confirm dialog
-  let confirmCallback = null;
-  function openConfirm(title, desc, cb) {
-    const t = document.getElementById('confirmTitle');
-    const d = document.getElementById('confirmDesc');
-    if (t) t.textContent = title;
-    if (d) d.textContent = desc;
-    confirmCallback = cb;
-    const m = document.getElementById('confirmModal');
-    if (m) m.classList.add('open');
+  if (modal) {
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeModal();
+    });
   }
-  const confirmCancel = document.getElementById('confirmCancel');
-  const confirmOk = document.getElementById('confirmOk');
-  if (confirmCancel) confirmCancel.addEventListener('click', function () {
-    const m = document.getElementById('confirmModal'); if (m) m.classList.remove('open');
-    confirmCallback = null;
-  });
-  if (confirmOk) confirmOk.addEventListener('click', function () {
-    if (confirmCallback) confirmCallback();
-    const m = document.getElementById('confirmModal'); if (m) m.classList.remove('open');
-    confirmCallback = null;
-  });
 
-  // Delete product
+  // ---------- Product actions ----------
   document.addEventListener('click', function (e) {
-    const btn = e.target.closest('#deleteProductBtn');
-    if (btn) {
-      const id = btn.getAttribute('data-id');
-      openConfirm('Delete this product?', 'This action cannot be undone.', async function () {
-        try {
-          await api('/api/products/' + id, { method: 'DELETE' });
-          toast('Product deleted', 'success');
-          window.location.href = '/products';
-        } catch (err) { toast(err.message, 'error'); }
+    var deleteBtn = e.target.closest('#deleteProductBtn');
+    if (deleteBtn) {
+      var id = deleteBtn.getAttribute('data-id');
+      openConfirm('Usunąć ten produkt?', 'Tej operacji nie można cofnąć. Zdjęcie produktu również zostanie usunięte.', function () {
+        api('/api/products/' + id, { method: 'DELETE' }).then(function () {
+          toast('Produkt usunięty.', 'success');
+          setTimeout(function () { window.location.href = '/products'; }, 300);
+        }).catch(function (err) { toast(err.message || 'Nie udało się usunąć produktu.', 'error'); });
       });
     }
   });
 
-  // Edit product
   document.addEventListener('click', function (e) {
-    const btn = e.target.closest('#editProductBtn');
-    if (btn) {
-      const id = btn.getAttribute('data-id');
+    var editBtn = e.target.closest('#editProductBtn');
+    if (editBtn) {
+      var id = editBtn.getAttribute('data-id');
       if (id) openEditProduct(id);
     }
+    var changeImageBtn = e.target.closest('#changeImageBtn');
+    if (changeImageBtn) {
+      var imageId = changeImageBtn.getAttribute('data-id');
+      if (imageId) openEditProduct(imageId);
+    }
+    var removeImageBtn = e.target.closest('#removeImageBtn');
+    if (removeImageBtn) {
+      var removeId = removeImageBtn.getAttribute('data-id');
+      openConfirm('Usunąć zdjęcie?', 'Zdjęcie zostanie odłączone od produktu. Możesz dodać nowe w każdej chwili.', function () {
+        api('/api/products/' + removeId, { method: 'PATCH', body: { imagePath: null } }).then(function () {
+          toast('Zdjęcie usunięte.', 'success');
+          setTimeout(function () { window.location.reload(); }, 300);
+        }).catch(function (err) { toast(err.message || 'Nie udało się usunąć zdjęcia.', 'error'); });
+      });
+    }
   });
 
-  // Favorite toggle
   document.addEventListener('click', function (e) {
-    const btn = e.target.closest('[data-fav]');
-    if (btn) {
-      e.preventDefault(); e.stopPropagation();
-      const id = btn.getAttribute('data-fav');
-      api('/api/products/' + id).then(function (res) {
-        const p = res.product || res;
-        const newStatus = p.status === 'FAVORITE' ? 'TO_CONSIDER' : 'FAVORITE';
-        return api('/api/products/' + id, { method: 'PATCH', body: { status: newStatus } });
-      }).then(function () {
-        btn.classList.toggle('is-favorite');
-        toast('Updated', 'success');
-      }).catch(function (err) { toast(err.message, 'error'); });
-    }
+    var btn = e.target.closest('[data-fav]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var id = btn.getAttribute('data-fav');
+    var currentStatus = btn.getAttribute('data-status') || 'TO_CONSIDER';
+    var nextStatus = currentStatus === 'FAVORITE' ? 'TO_CONSIDER' : 'FAVORITE';
+    btn.disabled = true;
+    api('/api/products/' + id, { method: 'PATCH', body: { status: nextStatus } }).then(function () {
+      btn.setAttribute('data-status', nextStatus);
+      var isFav = nextStatus === 'FAVORITE';
+      btn.classList.toggle('is-favorite', isFav);
+      btn.setAttribute('aria-label', isFav ? 'Usuń z ulubionych' : 'Dodaj do ulubionych');
+      toast(isFav ? 'Dodano do ulubionych.' : 'Usunięto z ulubionych.', 'success');
+    }).catch(function (err) {
+      toast(err.message || 'Nie udało się zaktualizować produktu.', 'error');
+    }).finally(function () {
+      btn.disabled = false;
+    });
   });
 
-  // Bulk
-  function updateBulkBar() {
-    const checks = $$('.bulk-check:checked');
-    const bar = document.getElementById('bulkBar');
-    const count = document.getElementById('bulkCount');
-    const favBtn = document.getElementById('bulkFavorite');
-    const statusBtn = document.getElementById('bulkStatus');
-    const delBtn = document.getElementById('bulkDelete');
-    const has = checks.length > 0;
-    if (!bar) return;
-    if (has) {
-      bar.style.display = 'flex';
-      if (count) count.textContent = checks.length;
-    } else {
-      bar.style.display = 'none';
-    }
-    if (favBtn) favBtn.disabled = !has;
-    if (statusBtn) statusBtn.disabled = !has;
-    if (delBtn) delBtn.disabled = !has;
-  }
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-mark-bought]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-mark-bought');
+    btn.disabled = true;
+    api('/api/products/' + id, { method: 'PATCH', body: { status: 'PURCHASED' } }).then(function () {
+      toast('Oznaczono jako kupione.', 'success');
+      setTimeout(function () { window.location.reload(); }, 350);
+    }).catch(function (err) {
+      btn.disabled = false;
+      toast(err.message || 'Nie udało się zaktualizować produktu.', 'error');
+    });
+  });
+
+  // ---------- Product filters & view ----------
   document.addEventListener('change', function (e) {
-    if (e.target.classList && e.target.classList.contains('bulk-check')) updateBulkBar();
+    var el = e.target;
+    if (el && el.matches && el.matches('[data-auto-submit]')) {
+      if (el.form) el.form.submit();
+    }
   });
 
+  document.addEventListener('click', function (e) {
+    var toggle = e.target.closest('[data-view-toggle]');
+    if (!toggle) return;
+    var view = toggle.getAttribute('data-view-toggle');
+    if (toggle.classList.contains('active')) return;
+    $$('[data-view-toggle]').forEach(function (b) { b.disabled = true; });
+    api('/api/settings', { method: 'PATCH', body: { defaultProductView: view } }).then(function () {
+      window.location.reload();
+    }).catch(function (err) {
+      $$('[data-view-toggle]').forEach(function (b) { b.disabled = false; });
+      toast(err.message || 'Nie udało się zmienić widoku.', 'error');
+    });
+  });
+
+  // ---------- Bulk actions ----------
   function getBulkIds() {
     return $$('.bulk-check:checked').map(function (cb) { return cb.value; });
   }
 
-  document.addEventListener('click', function (e) {
-    const del = e.target.closest('#bulkDelete');
-    if (del) {
-      e.preventDefault();
-      const ids = getBulkIds();
-      if (!ids.length) return;
-      openConfirm(
-        'Delete ' + ids.length + ' product' + (ids.length === 1 ? '' : 's') + '?',
-        'This removes the selected products and their images. This cannot be undone.',
-        function () {
-          api('/api/products/bulk', {
-            method: 'POST',
-            body: { action: 'delete', ids: ids }
-          }).then(function () {
-            toast('Product' + (ids.length === 1 ? '' : 's') + ' deleted', 'success');
-            setTimeout(function () { window.location.reload(); }, 400);
-          }).catch(function (err) { toast(err.message || 'Could not delete products.', 'error'); });
-        }
-      );
-    }
-    const fav = e.target.closest('#bulkFavorite');
-    if (fav) {
-      e.preventDefault();
-      const ids = getBulkIds();
-      if (!ids.length) return;
-      api('/api/products/bulk', {
-        method: 'POST',
-        body: { action: 'status', ids: ids, status: 'FAVORITE' }
-      }).then(function () {
-        toast('Added to favorites', 'success');
-        setTimeout(function () { window.location.reload(); }, 400);
-      }).catch(function (err) { toast(err.message || 'Could not update products.', 'error'); });
-    }
-    const status = e.target.closest('#bulkStatus');
-    if (status) {
-      e.preventDefault();
-      const ids = getBulkIds();
-      if (!ids.length) return;
-      var newStatus = prompt('Set status for selected products (TO_CONSIDER, FAVORITE, TO_BUY, PURCHASED):', 'TO_CONSIDER');
-      if (!newStatus) return;
-      api('/api/products/bulk', {
-        method: 'POST',
-        body: { action: 'status', ids: ids, status: newStatus }
-      }).then(function () {
-        toast('Status updated', 'success');
-        setTimeout(function () { window.location.reload(); }, 400);
-      }).catch(function (err) { toast(err.message || 'Could not update products.', 'error'); });
-    }
+  function updateBulkBar() {
+    var checks = $$('.bulk-check:checked');
+    var bar = document.getElementById('bulkBar');
+    var count = document.getElementById('bulkCount');
+    var statusSelect = document.getElementById('bulkStatus');
+    var deleteBtn = document.getElementById('bulkDelete');
+    var has = checks.length > 0;
+    if (bar) bar.style.display = has ? 'flex' : 'none';
+    if (count) count.textContent = String(checks.length);
+    if (statusSelect) statusSelect.disabled = !has;
+    if (deleteBtn) deleteBtn.disabled = !has;
+  }
+
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains('bulk-check')) updateBulkBar();
   });
 
-  // Settings save
-  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+  document.addEventListener('change', function (e) {
+    var select = e.target.closest ? e.target.closest('#bulkStatus') : null;
+    if (!select) return;
+    var ids = getBulkIds();
+    var status = select.value;
+    if (!ids.length || !status) return;
+    select.disabled = true;
+    api('/api/products/bulk', { method: 'POST', body: { action: 'status', ids: ids, status: status } }).then(function () {
+      toast('Status produktów został zmieniony.', 'success');
+      setTimeout(function () { window.location.reload(); }, 350);
+    }).catch(function (err) {
+      select.disabled = false;
+      select.value = '';
+      toast(err.message || 'Nie udało się zaktualizować produktów.', 'error');
+    });
+  });
+
+  document.addEventListener('click', function (e) {
+    var del = e.target.closest('#bulkDelete');
+    if (!del) return;
+    e.preventDefault();
+    var ids = getBulkIds();
+    if (!ids.length) return;
+    openConfirm(
+      'Usunąć ' + ids.length + ' ' + (ids.length === 1 ? 'produkt' : 'produkty') + '?',
+      'Wybrane produkty i ich zdjęcia zostaną usunięte. Tej operacji nie można cofnąć.',
+      function () {
+        api('/api/products/bulk', { method: 'POST', body: { action: 'delete', ids: ids } }).then(function () {
+          toast('Produkty zostały usunięte.', 'success');
+          setTimeout(function () { window.location.reload(); }, 350);
+        }).catch(function (err) { toast(err.message || 'Nie udało się usunąć produktów.', 'error'); });
+      }
+    );
+  });
+
+  // ---------- Settings ----------
+  var saveSettingsBtn = document.getElementById('saveSettingsBtn');
   if (saveSettingsBtn) {
-    saveSettingsBtn.addEventListener('click', async function () {
-      const currency = document.getElementById('currency').value;
-      const defaultProductView = document.getElementById('defaultProductView').value;
-      try {
-        await api('/api/settings', { method: 'PATCH', body: { currency: currency, defaultProductView: defaultProductView } });
-        toast('Settings saved', 'success');
-      } catch (err) { toast(err.message, 'error'); }
+    saveSettingsBtn.addEventListener('click', function () {
+      var currency = document.getElementById('currency');
+      var view = document.getElementById('defaultProductView');
+      saveSettingsBtn.disabled = true;
+      api('/api/settings', {
+        method: 'PATCH',
+        body: {
+          currency: currency ? currency.value : 'PLN',
+          defaultProductView: view ? view.value : 'grid'
+        }
+      }).then(function () {
+        toast('Preferencje zostały zapisane.', 'success');
+      }).catch(function (err) {
+        toast(err.message || 'Nie udało się zapisać preferencji.', 'error');
+      }).finally(function () {
+        saveSettingsBtn.disabled = false;
+      });
     });
   }
 
-  // Backup
-  const createBackupBtn = document.getElementById('createBackupBtn');
+  // ---------- Backups ----------
+  var createBackupBtn = document.getElementById('createBackupBtn');
   if (createBackupBtn) {
     createBackupBtn.addEventListener('click', async function () {
+      createBackupBtn.disabled = true;
       try {
-        await api('/api/settings/backup', { method: 'GET' });
-        toast('Backup created', 'success');
-        setTimeout(function () { window.location.reload(); }, 800);
-      } catch (err) { toast(err.message, 'error'); }
+        var res = await fetch('/api/settings/backup', {
+          method: 'GET',
+          headers: { 'X-CSRF-Token': csrfToken },
+          credentials: 'same-origin'
+        });
+        if (!res.ok) {
+          var message = 'Nie udało się utworzyć kopii zapasowej.';
+          try {
+            var data = await res.json();
+            if (data && data.error && data.error.message) message = data.error.message;
+          } catch (e) {}
+          throw new Error(message);
+        }
+        var blob = await res.blob();
+        var disposition = res.headers.get('Content-Disposition') || '';
+        var match = /filename="?([^";]+)"?/i.exec(disposition);
+        var filename = match ? match[1] : 'gift-vault-backup.zip';
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        toast('Kopia zapasowa została utworzona i pobrana.', 'success');
+        setTimeout(function () { window.location.reload(); }, 1000);
+      } catch (err) {
+        toast(err.message || 'Nie udało się utworzyć kopii zapasowej.', 'error');
+      } finally {
+        createBackupBtn.disabled = false;
+      }
     });
   }
 
-  // Invite
-  const createInviteBtn = document.getElementById('createInviteBtn');
+  var restoreBtn = document.getElementById('restoreBtn');
+  if (restoreBtn) {
+    restoreBtn.addEventListener('click', function () {
+      var fileInput = document.getElementById('restoreFile');
+      var file = fileInput && fileInput.files ? fileInput.files[0] : null;
+      if (!file) { toast('Wybierz plik kopii zapasowej (.zip).', 'error'); return; }
+      openConfirm(
+        'Przywrócić kopię zapasową?',
+        'Obecna baza danych zostanie zastąpiona danymi z kopii. Przed operacją powstanie kopia bezpieczeństwa.',
+        function () {
+          var fd = new FormData();
+          fd.append('backup', file);
+          restoreBtn.disabled = true;
+          api('/api/settings/restore', { method: 'POST', body: fd }).then(function () {
+            toast('Kopia zapasowa została przywrócona.', 'success');
+            setTimeout(function () { window.location.reload(); }, 900);
+          }).catch(function (err) {
+            restoreBtn.disabled = false;
+            toast(err.message || 'Nie udało się przywrócić kopii.', 'error');
+          });
+        }
+      );
+    });
+  }
+
+  // ---------- Invitations & accounts ----------
+  var createInviteBtn = document.getElementById('createInviteBtn');
   if (createInviteBtn) {
-    createInviteBtn.addEventListener('click', async function () {
-      try {
-        const res = await api('/api/auth/invitations', { method: 'POST', body: {} });
-        const link = res.invitation && res.invitation.link;
-        const input = document.getElementById('inviteLink');
-        if (input && link) input.value = window.location.origin + link;
-        toast('Invitation created', 'success');
-      } catch (err) { toast(err.message, 'error'); }
+    createInviteBtn.addEventListener('click', function () {
+      createInviteBtn.disabled = true;
+      api('/api/auth/invitations', { method: 'POST', body: {} }).then(function (res) {
+        var link = res.invitation && res.invitation.link;
+        var input = document.getElementById('inviteLink');
+        if (input && link) {
+          input.value = window.location.origin + link;
+          input.focus();
+          input.select();
+          try { document.execCommand('copy'); } catch (e) {}
+        }
+        toast('Zaproszenie utworzone. Link skopiowano do schowka.', 'success');
+      }).catch(function (err) {
+        toast(err.message || 'Nie udało się utworzyć zaproszenia.', 'error');
+      }).finally(function () {
+        createInviteBtn.disabled = false;
+      });
     });
   }
 
-  // User actions
   document.addEventListener('click', function (e) {
-    const block = e.target.closest('[data-block-user]');
-    const unblock = e.target.closest('[data-unblock-user]');
-    const del = e.target.closest('[data-delete-user]');
+    var block = e.target.closest('[data-block-user]');
+    var unblock = e.target.closest('[data-unblock-user]');
+    var del = e.target.closest('[data-delete-user]');
+
     if (block) {
-      const id = block.getAttribute('data-block-user');
-      api('/api/auth/users/' + id + '/block', { method: 'POST', body: {} }).then(function () { toast('Blocked', 'success'); setTimeout(function(){location.reload();},600); }).catch(function(err){toast(err.message,'error');});
+      var blockId = block.getAttribute('data-block-user');
+      api('/api/auth/users/' + blockId + '/block', { method: 'POST', body: {} }).then(function () {
+        toast('Konto zostało zablokowane.', 'success');
+        setTimeout(function () { window.location.reload(); }, 350);
+      }).catch(function (err) { toast(err.message || 'Nie udało się zablokować konta.', 'error'); });
     }
+
     if (unblock) {
-      const id = unblock.getAttribute('data-unblock-user');
-      api('/api/auth/users/' + id + '/unblock', { method: 'POST', body: {} }).then(function () { toast('Unblocked', 'success'); setTimeout(function(){location.reload();},600); }).catch(function(err){toast(err.message,'error');});
+      var unblockId = unblock.getAttribute('data-unblock-user');
+      api('/api/auth/users/' + unblockId + '/unblock', { method: 'POST', body: {} }).then(function () {
+        toast('Konto zostało odblokowane.', 'success');
+        setTimeout(function () { window.location.reload(); }, 350);
+      }).catch(function (err) { toast(err.message || 'Nie udało się odblokować konta.', 'error'); });
     }
+
     if (del) {
-      const id = del.getAttribute('data-delete-user');
-      openConfirm('Delete user?', 'This cannot be undone.', function () {
-        api('/api/auth/users/' + id, { method: 'DELETE' }).then(function () { toast('Deleted', 'success'); setTimeout(function(){location.reload();},600); }).catch(function(err){toast(err.message,'error');});
+      var userId = del.getAttribute('data-delete-user');
+      openConfirm('Usunąć to konto?', 'Konto i jego prywatne dane zostaną usunięte. Tej operacji nie można cofnąć.', function () {
+        api('/api/auth/users/' + userId, { method: 'DELETE' }).then(function () {
+          toast('Konto zostało usunięte.', 'success');
+          setTimeout(function () { window.location.reload(); }, 350);
+        }).catch(function (err) { toast(err.message || 'Nie udało się usunąć konta.', 'error'); });
       });
     }
   });
 
-  // Notes save
-  const saveNotesBtn = document.getElementById('saveNotesBtn');
+  // ---------- Notes ----------
+  var saveNotesBtn = document.getElementById('saveNotesBtn');
   if (saveNotesBtn) {
-    saveNotesBtn.addEventListener('click', async function () {
-      const id = saveNotesBtn.getAttribute('data-id');
-      const notes = document.getElementById('notesField').value;
-      try {
-        await api('/api/products/' + id, { method: 'PATCH', body: { notes: notes } });
-        toast('Notes saved', 'success');
-      } catch (err) { toast(err.message, 'error'); }
+    saveNotesBtn.addEventListener('click', function () {
+      var id = saveNotesBtn.getAttribute('data-id');
+      var notesField = document.getElementById('notesField');
+      if (!notesField) return;
+      saveNotesBtn.disabled = true;
+      api('/api/products/' + id, { method: 'PATCH', body: { notes: notesField.value } }).then(function () {
+        toast('Notatki zostały zapisane.', 'success');
+      }).catch(function (err) {
+        toast(err.message || 'Nie udało się zapisać notatek.', 'error');
+      }).finally(function () {
+        saveNotesBtn.disabled = false;
+      });
     });
   }
-  const notesField = document.getElementById('notesField');
+
+  var notesField = document.getElementById('notesField');
   if (notesField) {
     notesField.addEventListener('input', function () {
-      const c = document.getElementById('notesCount');
-      if (c) c.textContent = notesField.value.length + ' characters';
+      var count = document.getElementById('notesCount');
+      if (count) count.textContent = notesField.value.length + ' znaków';
     });
   }
 
   // ---------- Category modal ----------
-  const CAT_COLORS = [
-    '#C9A46A','#D9A3B0','#B7A5C9','#8FAFC4','#9DB8A4','#C4A484',
-    '#B4B8A5','#E0A5A5','#88B7B0','#D6A878','#A8A29E'
+  var CAT_COLORS = [
+    '#C9A46A', '#D9A3B0', '#B7A5C9', '#8FAFC4', '#9DB8A4', '#C4A484',
+    '#B4B8A5', '#E0A5A5', '#88B7B0', '#D6A878', '#A8A29E'
   ];
-  const CAT_ICONS = [
-    'tag','gem','sparkles','shirt','headphones','gamepad-2',
-    'book-open','lamp','flower-2','ticket','cake-slice','gift'
+  var CAT_ICONS = [
+    'tag', 'gem', 'sparkles', 'shirt', 'headphones', 'gamepad-2',
+    'book-open', 'lamp', 'flower-2', 'ticket', 'cake-slice', 'gift'
   ];
-  let catEditingId = null;
-  let catSelectedColor = CAT_COLORS[1];
-  let catSelectedIcon = CAT_ICONS[0];
+  var catEditingId = null;
+  var catSelectedColor = CAT_COLORS[1];
+  var catSelectedIcon = 'tag';
+
+  function normalizeIcon(name) {
+    return String(name || 'tag').toLowerCase();
+  }
 
   function renderCatSwatches() {
-    const box = document.getElementById('catSwatches');
+    var box = document.getElementById('catSwatches');
     if (!box) return;
     box.innerHTML = CAT_COLORS.map(function (color) {
       var selected = catSelectedColor === color ? ' selected' : '';
-      return '<button type="button" class="swatch' + selected + '" style="background:' + color + '" data-cat-color="' + esc(color) + '" aria-label="Colour ' + esc(color) + '"></button>';
+      return '<button type="button" class="swatch' + selected + '" style="background:' + color + '" data-cat-color="' + esc(color) + '" aria-label="Kolor ' + esc(color) + '"></button>';
     }).join('');
-    box.querySelectorAll('button').forEach(function (btn) {
+    $$('button', box).forEach(function (btn) {
       btn.addEventListener('click', function () {
         catSelectedColor = btn.getAttribute('data-cat-color');
+        var hidden = document.getElementById('catColor');
+        if (hidden) hidden.value = catSelectedColor;
         renderCatSwatches();
       });
     });
   }
 
   function renderCatIcons() {
-    const box = document.getElementById('catIcons');
+    var box = document.getElementById('catIcons');
     if (!box) return;
     box.innerHTML = CAT_ICONS.map(function (name) {
       var selected = catSelectedIcon === name ? ' selected' : '';
-      return '<button type="button" class="icon-option' + selected + '" data-cat-icon="' + esc(name) + '" aria-label="Icon ' + esc(name) + '"><svg class="icon"><use href="#i-' + esc(name) + '"></use></svg></button>';
+      return '<button type="button" class="icon-option' + selected + '" data-cat-icon="' + esc(name) + '" aria-label="Ikona ' + esc(name) + '">' + iconSvg(name) + '</button>';
     }).join('');
-    box.querySelectorAll('button').forEach(function (btn) {
+    $$('button', box).forEach(function (btn) {
       btn.addEventListener('click', function () {
         catSelectedIcon = btn.getAttribute('data-cat-icon');
+        var hidden = document.getElementById('catIcon');
+        if (hidden) hidden.value = catSelectedIcon;
         renderCatIcons();
       });
     });
   }
 
   function openCategoryModal(category) {
-    var m = document.getElementById('categoryModal');
-    if (m && m.classList.contains('open')) return;
+    var modalEl = document.getElementById('categoryModal');
+    if (!modalEl || modalEl.classList.contains('open')) return;
     catEditingId = category ? category.id : null;
     var nameEl = document.getElementById('catName');
     var colorEl = document.getElementById('catColor');
     var iconEl = document.getElementById('catIcon');
+    var idEl = document.getElementById('catId');
     var title = document.getElementById('catModalTitle');
     var desc = document.getElementById('catModalDesc');
     var saveBtn = document.getElementById('catSave');
 
+    catSelectedColor = category && category.color ? category.color : CAT_COLORS[1];
+    catSelectedIcon = normalizeIcon(category ? category.icon : 'tag');
+
     if (nameEl) nameEl.value = category ? category.name : '';
-    if (colorEl) colorEl.value = category ? category.color : CAT_COLORS[1];
-    if (iconEl) iconEl.value = category ? category.icon : 'tag';
-    catSelectedColor = colorEl ? colorEl.value : CAT_COLORS[1];
-    catSelectedIcon = iconEl ? iconEl.value : 'tag';
-    if (title) title.textContent = category ? 'Edit category' : 'New category';
-    if (desc) desc.textContent = category ? 'Update name, colour and icon.' : 'Pick a name, a soft accent colour and an icon.';
-    if (saveBtn) saveBtn.textContent = category ? 'Save changes' : 'Create category';
+    if (colorEl) colorEl.value = catSelectedColor;
+    if (iconEl) iconEl.value = catSelectedIcon;
+    if (idEl) idEl.value = category ? category.id : '';
+    if (title) title.textContent = category ? 'Edytuj kategorię' : 'Nowa kategoria';
+    if (desc) desc.textContent = category ? 'Zaktualizuj nazwę, kolor i ikonę.' : 'Wybierz nazwę, delikatny kolor i ikonę.';
+    if (saveBtn) saveBtn.textContent = category ? 'Zapisz zmiany' : 'Utwórz kategorię';
 
     renderCatSwatches();
     renderCatIcons();
-
-    var m = document.getElementById('categoryModal');
-    if (m) m.classList.add('open');
+    modalEl.classList.add('open');
+    syncModalLock();
+    if (nameEl) setTimeout(function () { nameEl.focus(); }, 30);
   }
 
   function closeCategoryModal() {
-    var m = document.getElementById('categoryModal');
-    if (m) m.classList.remove('open');
+    var modalEl = document.getElementById('categoryModal');
+    if (modalEl) modalEl.classList.remove('open');
     catEditingId = null;
+    syncModalLock();
   }
 
-  const newCatBtn = document.getElementById('newCategoryBtn');
+  var newCatBtn = document.getElementById('newCategoryBtn');
+  var newCatBtn2 = document.getElementById('newCategoryBtn2');
+  var catCancel = document.getElementById('catCancel');
+  var catClose = document.getElementById('catClose');
   if (newCatBtn) newCatBtn.addEventListener('click', function () { openCategoryModal(null); });
-  const catCancel = document.getElementById('catCancel');
+  if (newCatBtn2) newCatBtn2.addEventListener('click', function () { openCategoryModal(null); });
   if (catCancel) catCancel.addEventListener('click', closeCategoryModal);
+  if (catClose) catClose.addEventListener('click', closeCategoryModal);
 
-  const catSave = document.getElementById('catSave');
-  if (catSave) catSave.addEventListener('click', async function () {
-    var nameEl = document.getElementById('catName');
-    var colorEl = document.getElementById('catColor');
-    var iconEl = document.getElementById('catIcon');
-    if (!nameEl || !nameEl.value.trim()) { toast('Category name is required.', 'error'); return; }
-    var body = {
-      name: nameEl.value.trim(),
-      color: (colorEl ? colorEl.value : catSelectedColor) || catSelectedColor,
-      icon: (iconEl ? iconEl.value : catSelectedIcon) || catSelectedIcon
-    };
-    try {
-      if (catEditingId) {
-        await api('/api/categories/' + catEditingId, { method: 'PATCH', body: body });
-        toast('Category updated', 'success');
-      } else {
-        await api('/api/categories', { method: 'POST', body: body });
-        toast('Category created', 'success');
-      }
-      closeCategoryModal();
-      setTimeout(function () { window.location.reload(); }, 400);
-    } catch (err) { toast(err.message || 'Could not save category.', 'error'); }
-  });
+  var categoryModalEl = document.getElementById('categoryModal');
+  if (categoryModalEl) {
+    categoryModalEl.addEventListener('click', function (e) {
+      if (e.target === categoryModalEl) closeCategoryModal();
+    });
+  }
 
-  // Edit / delete category from row dropdown
+  var catSave = document.getElementById('catSave');
+  if (catSave) {
+    catSave.addEventListener('click', function () {
+      var nameEl = document.getElementById('catName');
+      var colorEl = document.getElementById('catColor');
+      var iconEl = document.getElementById('catIcon');
+      if (!nameEl || !nameEl.value.trim()) { toast('Nazwa kategorii jest wymagana.', 'error'); return; }
+      var body = {
+        name: nameEl.value.trim(),
+        color: (colorEl ? colorEl.value : catSelectedColor) || catSelectedColor,
+        icon: (iconEl ? iconEl.value : catSelectedIcon) || catSelectedIcon
+      };
+      catSave.disabled = true;
+      var request = catEditingId
+        ? api('/api/categories/' + catEditingId, { method: 'PATCH', body: body })
+        : api('/api/categories', { method: 'POST', body: body });
+      request.then(function () {
+        toast(catEditingId ? 'Kategoria zaktualizowana.' : 'Kategoria utworzona.', 'success');
+        closeCategoryModal();
+        setTimeout(function () { window.location.reload(); }, 350);
+      }).catch(function (err) {
+        catSave.disabled = false;
+        toast(err.message || 'Nie udało się zapisać kategorii.', 'error');
+      });
+    });
+  }
+
   document.addEventListener('click', function (e) {
     var editBtn = e.target.closest('[data-edit-cat]');
     if (editBtn) {
       e.preventDefault();
-      var id = editBtn.getAttribute('data-edit-cat');
-      var name = editBtn.closest('.category-card').querySelector('.category-name').textContent;
-      // We need color + icon from the card; fetch from the DOM attribute via a data-ish lookup.
-      // Simplest: refetch categories is heavy; instead read from the rendered card inline styles is unreliable.
-      // We'll open a minimal edit with name only and keep existing color/icon unless user changes.
-      openCategoryModal({ id: id, name: name, color: document.getElementById('catColor') ? document.getElementById('catColor').value : CAT_COLORS[1], icon: document.getElementById('catIcon') ? document.getElementById('catIcon').value : 'tag' });
+      openCategoryModal({
+        id: editBtn.getAttribute('data-edit-cat'),
+        name: editBtn.getAttribute('data-name'),
+        color: editBtn.getAttribute('data-color'),
+        icon: editBtn.getAttribute('data-icon')
+      });
     }
+
     var delBtn = e.target.closest('[data-delete-cat]');
     if (delBtn) {
       e.preventDefault();
       var id = delBtn.getAttribute('data-delete-cat');
-      var name = delBtn.getAttribute('data-name') || 'this category';
+      var name = delBtn.getAttribute('data-name') || 'tę kategorię';
       openConfirm(
-        'Delete ' + esc(name) + '?',
-        'This only removes the category. Products and price history are not affected.',
+        'Usunąć kategorię „' + name + '”?',
+        'Usunięta zostanie tylko kategoria. Produkty i ich historia cen pozostaną bez zmian.',
         function () {
           api('/api/categories/' + id, { method: 'DELETE' }).then(function () {
-            toast('Category deleted', 'success');
-            setTimeout(function () { window.location.reload(); }, 400);
-          }).catch(function (err) { toast(err.message || 'Could not delete category.', 'error'); });
+            toast('Kategoria usunięta.', 'success');
+            setTimeout(function () { window.location.reload(); }, 350);
+          }).catch(function (err) { toast(err.message || 'Nie udało się usunąć kategorii.', 'error'); });
         }
       );
     }
   });
 
-  // Expose api for inline scripts (e.g. groups.php) that load before this bundle.
+  // Expose helpers for inline page scripts (np. groups.php).
   window.api = api;
   window.toast = toast;
   window.openConfirm = openConfirm;

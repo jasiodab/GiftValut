@@ -169,7 +169,7 @@ if (!function_exists('format_date')) {
         if ($timestamp === null) {
             return '—';
         }
-        return date('j M Y', $timestamp);
+        return date('d.m.Y', $timestamp);
     }
 }
 
@@ -180,7 +180,23 @@ if (!function_exists('format_datetime')) {
         if ($timestamp === null) {
             return '—';
         }
-        return date('j M Y, H:i', $timestamp);
+        return date('d.m.Y, H:i', $timestamp);
+    }
+}
+
+if (!function_exists('plural_pl')) {
+    function plural_pl(int $count, string $one, string $few, string $many): string
+    {
+        $absolute = abs($count);
+        if ($absolute === 1) {
+            return $one;
+        }
+        $last = $absolute % 10;
+        $lastTwo = $absolute % 100;
+        if ($last >= 2 && $last <= 4 && ($lastTwo < 12 || $lastTwo > 14)) {
+            return $few;
+        }
+        return $many;
     }
 }
 
@@ -189,24 +205,25 @@ if (!function_exists('time_ago')) {
     {
         $timestamp = to_timestamp($value);
         if ($timestamp === null) {
-            return 'Never';
+            return 'Nigdy';
         }
         $seconds = $timestamp - time();
         $absolute = abs($seconds);
+        $future = $seconds > 0;
         if ($absolute < 60) {
-            return 'Just now';
+            return 'przed chwilą';
         }
         if ($absolute < 3600) {
-            $minutes = (int) round($seconds / 60);
-            return $minutes === -1 ? '1 minute ago' : ($minutes < 0 ? abs($minutes) . ' minutes ago' : 'in ' . $minutes . ' minutes');
+            $minutes = max(1, (int) round($absolute / 60));
+            return $future ? 'za ' . $minutes . ' min' : $minutes . ' min temu';
         }
         if ($absolute < 86400) {
-            $hours = (int) round($seconds / 3600);
-            return $hours === -1 ? '1 hour ago' : ($hours < 0 ? abs($hours) . ' hours ago' : 'in ' . $hours . ' hours');
+            $hours = max(1, (int) round($absolute / 3600));
+            return $future ? 'za ' . $hours . ' godz.' : $hours . ' godz. temu';
         }
         if ($absolute < 604800) {
-            $days = (int) round($seconds / 86400);
-            return $days === -1 ? '1 day ago' : ($days < 0 ? abs($days) . ' days ago' : 'in ' . $days . ' days');
+            $days = max(1, (int) round($absolute / 86400));
+            return $future ? 'za ' . $days . ' dni' : $days . ' dni temu';
         }
         return format_date($timestamp);
     }
@@ -231,30 +248,30 @@ if (!function_exists('status_meta')) {
     {
         $map = [
             'TO_CONSIDER' => [
-                'label' => 'To consider',
-                'short' => 'Considering',
-                'description' => 'Ideas worth keeping an eye on',
+                'label' => 'Do rozważenia',
+                'short' => 'Rozważane',
+                'description' => 'Pomysły, które warto mieć na oku',
                 'class' => 'status-consider',
                 'dot' => 'dot-muted',
             ],
             'FAVORITE' => [
-                'label' => 'Favorite',
-                'short' => 'Favorite',
-                'description' => 'Your most-loved finds',
+                'label' => 'Ulubione',
+                'short' => 'Ulubione',
+                'description' => 'Twoje najbardziej lubiane znaleziska',
                 'class' => 'status-favorite',
                 'dot' => 'dot-primary',
             ],
             'TO_BUY' => [
-                'label' => 'To buy',
-                'short' => 'To buy',
-                'description' => 'Ready for the next occasion',
+                'label' => 'Do kupienia',
+                'short' => 'Do kupienia',
+                'description' => 'Gotowe na kolejną okazję',
                 'class' => 'status-tobuy',
                 'dot' => 'dot-warning',
             ],
             'PURCHASED' => [
-                'label' => 'Purchased',
-                'short' => 'Purchased',
-                'description' => 'Gifts already secured',
+                'label' => 'Kupione',
+                'short' => 'Kupione',
+                'description' => 'Prezenty już zabezpieczone',
                 'class' => 'status-purchased',
                 'dot' => 'dot-success',
             ],

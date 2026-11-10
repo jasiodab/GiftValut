@@ -44,6 +44,7 @@ final class Serializer
         return [
             'id' => (string) $row['id'],
             'name' => (string) $row['name'],
+            'groupId' => $row['groupId'] !== null ? (string) $row['groupId'] : null,
             'url' => (string) $row['url'],
             'normalizedUrl' => (string) $row['normalizedUrl'],
             'description' => $row['description'] !== null ? (string) $row['description'] : null,

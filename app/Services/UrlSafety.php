@@ -31,12 +31,12 @@ final class UrlSafety
         $trimmed = trim($input);
         $parts = parse_url($trimmed);
         if ($parts === false || !isset($parts['scheme'], $parts['host']) || $parts['host'] === '') {
-            throw new HttpException(400, 'Enter a valid product URL.', 'INVALID_URL');
+            throw new HttpException(400, 'Wpisz poprawny adres URL produktu.', 'INVALID_URL');
         }
 
         $scheme = strtolower((string) $parts['scheme']);
         if ($scheme !== 'http' && $scheme !== 'https') {
-            throw new HttpException(400, 'Only HTTP and HTTPS links are supported.', 'INVALID_PROTOCOL');
+            throw new HttpException(400, 'Obsługiwane są tylko linki HTTP i HTTPS.', 'INVALID_PROTOCOL');
         }
         if (isset($parts['user']) || isset($parts['pass'])) {
             throw new HttpException(400, 'URLs containing credentials are not supported.', 'INVALID_URL');
@@ -213,18 +213,18 @@ final class UrlSafety
     {
         $hostname = strtolower(trim($hostname, '[]'));
         if ($hostname === '') {
-            throw new HttpException(400, 'The store domain is missing.', 'BLOCKED_HOST');
+            throw new HttpException(400, 'Brakuje domeny sklepu.', 'BLOCKED_HOST');
         }
 
         foreach (self::BLOCKED_SUFFIXES as $suffix) {
             if ($hostname === substr($suffix, 1) || str_ends_with($hostname, $suffix)) {
-                throw new HttpException(400, 'Local and internal hostnames cannot be fetched.', 'BLOCKED_HOST');
+                throw new HttpException(400, 'Nie można pobrać nazw hostów lokalnych i wewnętrznych.', 'BLOCKED_HOST');
             }
         }
 
         if (filter_var($hostname, FILTER_VALIDATE_IP)) {
             if (self::isPrivateIp($hostname)) {
-                throw new HttpException(400, 'Private and internal network addresses are blocked.', 'BLOCKED_HOST');
+                throw new HttpException(400, 'Adresy sieci prywatnych i wewnętrznych są zablokowane.', 'BLOCKED_HOST');
             }
             return [['address' => $hostname, 'family' => str_contains($hostname, ':') ? 6 : 4]];
         }
@@ -252,12 +252,12 @@ final class UrlSafety
         }
 
         if ($addresses === []) {
-            throw new HttpException(400, 'The store domain could not be resolved.', 'DNS_FAILED');
+            throw new HttpException(400, 'Nie można rozwiązać domeny sklepu.', 'DNS_FAILED');
         }
 
         foreach ($addresses as $entry) {
             if (self::isPrivateIp($entry['address'])) {
-                throw new HttpException(400, 'That domain resolves to a private network address.', 'BLOCKED_HOST');
+                throw new HttpException(400, 'Ta domena rozwiązuje się do prywatnego adresu sieciowego.', 'BLOCKED_HOST');
             }
         }
 
@@ -271,11 +271,11 @@ final class UrlSafety
     {
         $parts = parse_url($url);
         if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
-            throw new HttpException(400, 'Enter a valid product URL.', 'INVALID_URL');
+            throw new HttpException(400, 'Wpisz poprawny adres URL produktu.', 'INVALID_URL');
         }
         $scheme = strtolower((string) $parts['scheme']);
         if ($scheme !== 'http' && $scheme !== 'https') {
-            throw new HttpException(400, 'Only HTTP and HTTPS links are supported.', 'INVALID_PROTOCOL');
+            throw new HttpException(400, 'Obsługiwane są tylko linki HTTP i HTTPS.', 'INVALID_PROTOCOL');
         }
         return self::resolvePublicAddresses((string) $parts['host']);
     }

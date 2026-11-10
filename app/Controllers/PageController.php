@@ -56,7 +56,7 @@ final class PageController extends Controller
         );
 
         return View::render('dashboard', [
-            'title' => 'Dashboard · Gift Vault',
+            'title' => 'Panel · Gift Vault',
             'activeNav' => 'dashboard',
             'dashboard' => $data,
         ]);
@@ -79,6 +79,7 @@ final class PageController extends Controller
             $status = 'ALL';
         }
         $categoryId = (string) $this->request->query('categoryId', '');
+        $groupId = (string) $this->request->query('groupId', '');
         $favorite = (string) $this->request->query('favorite', '') === 'true';
         $sort = (string) $this->request->query('sort', 'recent');
         if (!in_array($sort, ['recent', 'updated', 'price-asc', 'price-desc', 'name'], true)) {
@@ -91,6 +92,7 @@ final class PageController extends Controller
             'search' => $search,
             'status' => $status,
             'categoryId' => $categoryId,
+            'groupId' => $groupId,
             'favorite' => $favorite,
             'sort' => $sort,
         ], $page, $pageSize, $this->tags);
@@ -104,7 +106,7 @@ final class PageController extends Controller
         $settingsRow = $this->settings->ensureForUser($userId);
 
         return View::render('products/index', [
-            'title' => 'Products · Gift Vault',
+            'title' => 'Produkty · Gift Vault',
             'activeNav' => 'products',
             'products' => array_map([Serializer::class, 'product'], $result['products']),
             'pagination' => [
@@ -120,6 +122,7 @@ final class PageController extends Controller
                 'search' => $search,
                 'status' => $status,
                 'categoryId' => $categoryId,
+                'groupId' => $groupId,
                 'favorite' => $favorite,
                 'sort' => $sort,
             ],
@@ -134,7 +137,7 @@ final class PageController extends Controller
         $user = Auth::user();
         $row = $this->products->findForUser($id, (string) $user['id'], $this->tags);
         if ($row === null) {
-            throw new HttpException(404, 'Product not found.', 'PRODUCT_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono produktu.', 'PRODUCT_NOT_FOUND');
         }
         $settingsRow = $this->settings->ensureForUser((string) $user['id']);
 
@@ -157,7 +160,7 @@ final class PageController extends Controller
         $settingsRow = $this->settings->ensureForUser((string) $user['id']);
 
         return View::render('categories', [
-            'title' => 'Categories · Gift Vault',
+            'title' => 'Kategorie · Gift Vault',
             'activeNav' => 'categories',
             'categories' => array_map([Serializer::class, 'category'], $this->categories->listForUser((string) $user['id'])),
             'settings' => Serializer::settings($settingsRow),
@@ -173,7 +176,7 @@ final class PageController extends Controller
         $settingsRow = $this->settings->ensureForUser((string) $user['id']);
 
         return View::render('groups', [
-            'title' => 'Groups · Gift Vault',
+            'title' => 'Grupy · Gift Vault',
             'activeNav' => 'groups',
             'groups' => array_map([$this, 'serializeGroupForView'], $this->groups->listForUser((string) $user['id'])),
             'settings' => Serializer::settings($settingsRow),
@@ -240,7 +243,7 @@ final class PageController extends Controller
         }
 
         return View::render('settings', [
-            'title' => 'Settings · Gift Vault',
+            'title' => 'Ustawienia · Gift Vault',
             'activeNav' => 'settings',
             'settings' => Serializer::settings($settingsRow),
             'database' => [
@@ -273,11 +276,11 @@ final class PageController extends Controller
         $filename = basename($filename);
         $repository = new UploadRepository();
         if ($filename === '' || !$repository->existsForUser($filename, (string) $user['id'])) {
-            throw new HttpException(404, 'Image not found.', 'NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono zdjęcia.', 'NOT_FOUND');
         }
         $path = Images::absolutePath($filename);
         if (!is_file($path)) {
-            throw new HttpException(404, 'Image not found.', 'NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono zdjęcia.', 'NOT_FOUND');
         }
 
         return Response::file($path, null, [
@@ -319,7 +322,7 @@ final class PageController extends Controller
     {
         $user = Auth::user();
         return View::render('errors/404', [
-            'title' => 'Page not found · Gift Vault',
+            'title' => 'Strona nie znaleziona · Gift Vault',
             'activeNav' => '',
         ], $user === null ? 'auth-layout' : 'layout');
     }

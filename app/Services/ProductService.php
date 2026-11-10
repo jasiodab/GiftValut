@@ -67,7 +67,7 @@ final class ProductService
         $normalized = UrlSafety::normalizeProductUrl((string) $input['url']);
         $duplicate = $this->products->findByNormalizedUrl($userId, $normalized['normalizedUrl']);
         if ($duplicate !== null) {
-            throw new HttpException(409, 'This product URL is already in your vault.', 'DUPLICATE_PRODUCT', [
+            throw new HttpException(409, 'Ten adres URL produktu jest już w Twojej skarbnicy.', 'DUPLICATE_PRODUCT', [
                 'productId' => (string) $duplicate['id'],
                 'productName' => (string) $duplicate['name'],
             ]);
@@ -89,7 +89,7 @@ final class ProductService
         $tags = self::cleanTagNames($input['tags'] ?? []);
         $imagePath = $this->assertOwnedImage($userId, self::normalizeImagePath($input['imagePath'] ?? null));
 
-        $id = App::db()->transaction(function () use ($userId, $input, $normalized, $category, $store, $tags, $imagePath): string {
+        $id = App::db()->transaction(function () use ($userId, $input, $normalized, $category, $store, $tags, $imagePath, $groupId): string {
             $id = $this->products->create([
                 'userId' => $userId,
                 'name' => trim((string) $input['name']),
@@ -123,7 +123,7 @@ final class ProductService
     {
         $existing = $this->products->findRowForUser($id, $userId);
         if ($existing === null) {
-            throw new HttpException(404, 'Product not found.', 'PRODUCT_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono produktu.', 'PRODUCT_NOT_FOUND');
         }
 
         $data = [];
@@ -134,7 +134,7 @@ final class ProductService
             $url = $normalized['url'];
             $duplicate = $this->products->findByNormalizedUrl($userId, $normalized['normalizedUrl'], $id);
             if ($duplicate !== null) {
-                throw new HttpException(409, 'Another product already uses this URL.', 'DUPLICATE_PRODUCT', [
+                throw new HttpException(409, 'Inny produkt już używa tego adresu URL.', 'DUPLICATE_PRODUCT', [
                     'productId' => (string) $duplicate['id'],
                     'productName' => (string) $duplicate['name'],
                 ]);
@@ -235,7 +235,7 @@ final class ProductService
     {
         $existing = $this->products->findRowForUser($id, $userId);
         if ($existing === null) {
-            throw new HttpException(404, 'Product not found.', 'PRODUCT_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono produktu.', 'PRODUCT_NOT_FOUND');
         }
 
         App::db()->transaction(function () use ($id, $userId): void {
@@ -295,7 +295,7 @@ final class ProductService
     {
         $row = $this->products->findForUser($id, $userId, $this->tags);
         if ($row === null) {
-            throw new HttpException(404, 'Product not found.', 'PRODUCT_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono produktu.', 'PRODUCT_NOT_FOUND');
         }
         return Serializer::product($row);
     }
@@ -305,14 +305,14 @@ final class ProductService
         if ($categoryId !== null && $categoryId !== '') {
             $category = $this->categories->findForUser($categoryId, $userId);
             if ($category === null) {
-                throw new HttpException(400, 'The selected category no longer exists.', 'INVALID_CATEGORY');
+                throw new HttpException(400, 'Wybrana kategoria nie istnieje już.', 'INVALID_CATEGORY');
             }
             return $category;
         }
 
         $fallback = $this->categories->findOther($userId) ?? $this->categories->firstForUser($userId);
         if ($fallback === null) {
-            throw new HttpException(500, 'No categories exist in the database.', 'NO_CATEGORIES');
+            throw new HttpException(500, 'Brak kategorii w bazie danych.', 'NO_CATEGORIES');
         }
         return $fallback;
     }
@@ -331,7 +331,7 @@ final class ProductService
         }
         $filename = basename($imagePath);
         if (!$this->uploads->existsForUser($filename, $userId)) {
-            throw new HttpException(400, 'The selected image is not available in your account.', 'INVALID_IMAGE_PATH');
+            throw new HttpException(400, 'Wybrane zdjęcie nie jest dostępne na Twoim koncie.', 'INVALID_IMAGE_PATH');
         }
         return $imagePath;
     }
@@ -378,11 +378,11 @@ final class ProductService
             return null;
         }
         if (!str_starts_with($cleaned, '/uploads/')) {
-            throw new HttpException(400, 'Images must be stored in the local uploads folder.', 'INVALID_IMAGE_PATH');
+            throw new HttpException(400, 'Zdjęcia muszą być przechowywane w lokalnym folderze uploads.', 'INVALID_IMAGE_PATH');
         }
         $filename = basename($cleaned);
         if ($filename === '' || $filename === '.' || $filename === '..') {
-            throw new HttpException(400, 'Invalid image reference.', 'INVALID_IMAGE_PATH');
+            throw new HttpException(400, 'Nieprawidłowe odwołanie do zdjęcia.', 'INVALID_IMAGE_PATH');
         }
         return '/uploads/' . $filename;
     }

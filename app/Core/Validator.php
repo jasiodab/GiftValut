@@ -29,20 +29,20 @@ final class Validator
     {
         $value = $this->data[$key] ?? null;
         if ($value === null || !is_scalar($value)) {
-            $this->error($key, $label . ' is required.');
+            $this->error($key, 'Pole „' . $label . '” jest wymagane.');
             return '';
         }
         $value = trim((string) $value);
         if ($value === '') {
-            $this->error($key, $label . ' is required.');
+            $this->error($key, 'Pole „' . $label . '” jest wymagane.');
             return '';
         }
         $length = mb_strlen($value);
         if ($length < $min) {
-            $this->error($key, $label . ' must be at least ' . $min . ' characters.');
+            $this->error($key, 'Pole „' . $label . '” musi mieć co najmniej ' . $min . ' znaków.');
         }
         if ($length > $max) {
-            $this->error($key, $label . ' may not be longer than ' . $max . ' characters.');
+            $this->error($key, 'Pole „' . $label . '” może mieć najwyżej ' . $max . ' znaków.');
         }
         return $value;
     }
@@ -57,7 +57,7 @@ final class Validator
             return null;
         }
         if (!is_scalar($value)) {
-            $this->error($key, $label . ' must be text.');
+            $this->error($key, 'Pole „' . $label . '” musi być tekstem.');
             return null;
         }
         $value = trim((string) $value);
@@ -65,7 +65,7 @@ final class Validator
             return null;
         }
         if (mb_strlen($value) > $max) {
-            $this->error($key, $label . ' may not be longer than ' . $max . ' characters.');
+            $this->error($key, 'Pole „' . $label . '” może mieć najwyżej ' . $max . ' znaków.');
         }
         return $value;
     }
@@ -74,7 +74,7 @@ final class Validator
     {
         $value = $this->optionalNumber($key, $label, $min, $max);
         if ($value === null) {
-            $this->error($key, $label . ' is required.');
+            $this->error($key, 'Pole „' . $label . '” jest wymagane.');
             return 0.0;
         }
         return $value;
@@ -90,19 +90,19 @@ final class Validator
             return null;
         }
         if (is_bool($value) || !is_numeric($value)) {
-            $this->error($key, 'Enter a valid number for ' . strtolower($label) . '.');
+            $this->error($key, 'Wpisz poprawną liczbę w polu „' . $label . '”.');
             return null;
         }
         $number = (float) $value;
         if (!is_finite($number)) {
-            $this->error($key, 'Enter a valid number for ' . strtolower($label) . '.');
+            $this->error($key, 'Wpisz poprawną liczbę w polu „' . $label . '”.');
             return null;
         }
         if ($number < $min) {
-            $this->error($key, $label . ' cannot be lower than ' . $min . '.');
+            $this->error($key, 'Wartość pola „' . $label . '” nie może być mniejsza niż ' . $min . '.');
         }
         if ($number > $max) {
-            $this->error($key, $label . ' is too large.');
+            $this->error($key, 'Wartość pola „' . $label . '” jest zbyt duża.');
         }
         return round($number + 1.0E-9, 2);
     }
@@ -114,16 +114,16 @@ final class Validator
         }
         $value = $this->data[$key];
         if (is_bool($value) || !is_numeric($value)) {
-            $this->error($key, 'Enter a valid number for ' . strtolower($label) . '.');
+            $this->error($key, 'Wpisz poprawną liczbę w polu „' . $label . '”.');
             return $default;
         }
         $number = (int) $value;
         if ((string) $number !== (string) $value && !is_int($value) && !ctype_digit((string) $value)) {
-            $this->error($key, 'Enter a whole number for ' . strtolower($label) . '.');
+            $this->error($key, 'Wpisz liczbę całkowitą w polu „' . $label . '”.');
             return $default;
         }
         if ($number < $min || $number > $max) {
-            $this->error($key, $label . ' must be between ' . $min . ' and ' . $max . '.');
+            $this->error($key, 'Wartość pola „' . $label . '” musi mieścić się między ' . $min . ' a ' . $max . '.');
             return $default;
         }
         return $number;
@@ -136,7 +136,7 @@ final class Validator
         }
         $value = (string) $this->data[$key];
         if (!in_array($value, $allowed, true)) {
-            $this->error($key, 'Choose a valid ' . strtolower($label) . '.');
+            $this->error($key, 'Wybierz poprawną wartość pola „' . $label . '”.');
             return $default;
         }
         return $value;
@@ -152,7 +152,7 @@ final class Validator
         }
         $value = $this->data[$key];
         if (!is_array($value)) {
-            $this->error($key, $label . ' must be a list.');
+            $this->error($key, 'Pole „' . $label . '” musi być listą.');
             return [];
         }
         $result = [];
@@ -192,13 +192,13 @@ final class Validator
         $value = $this->data[$key] ?? null;
         if ($value === null || trim((string) $value) === '') {
             if ($required) {
-                $this->error($key, $label . ' is required.');
+                $this->error($key, 'Pole „' . $label . '” jest wymagane.');
             }
             return null;
         }
         $value = trim((string) $value);
         if (!filter_var($value, FILTER_VALIDATE_EMAIL) || mb_strlen($value) > 190) {
-            $this->error($key, 'Enter a valid email address.');
+            $this->error($key, 'Wpisz poprawny adres e-mail.');
             return null;
         }
         return mb_strtolower($value);
@@ -231,7 +231,7 @@ final class Validator
         }
         throw new HttpException(
             400,
-            'Please check the highlighted fields.',
+            'Sprawdź zaznaczone pola.',
             'VALIDATION_ERROR',
             ['formErrors' => [], 'fieldErrors' => $this->errors]
         );

@@ -52,21 +52,21 @@ final class Images
     {
         $maxBytes = (int) App::config('uploads.max_bytes', 2 * 1024 * 1024);
         if ($bytes === '') {
-            throw new \RuntimeException('The image file is empty.');
+            throw new \RuntimeException('Plik zdjęcia jest pusty.');
         }
         if (strlen($bytes) > $maxBytes) {
-            throw new \RuntimeException('The image is larger than the 2 MB limit.');
+            throw new \RuntimeException('Zdjęcie przekracza limit 2 MB.');
         }
 
         $detected = self::detect($bytes);
         if ($detected === null) {
-            throw new \RuntimeException('The file is not a supported image (JPEG, PNG, WebP, GIF or AVIF).');
+            throw new \RuntimeException('Plik nie jest obsługiwanym obrazem (JPEG, PNG, WebP, GIF lub AVIF).');
         }
 
         if ($declaredMimeType !== null && $declaredMimeType !== ''
             && !str_starts_with($declaredMimeType, 'image/')
             && $declaredMimeType !== 'application/octet-stream') {
-            throw new \RuntimeException('The file does not look like an image.');
+            throw new \RuntimeException('Plik nie wygląda na obraz.');
         }
 
         $directory = (string) App::config('paths.uploads');
@@ -79,7 +79,7 @@ final class Images
 
         $handle = @fopen($absolute, 'xb');
         if ($handle === false) {
-            throw new \RuntimeException('The image could not be saved.');
+            throw new \RuntimeException('Nie można zapisać zdjęcia.');
         }
         try {
             fwrite($handle, $bytes);

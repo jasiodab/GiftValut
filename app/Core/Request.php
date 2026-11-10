@@ -51,7 +51,7 @@ final class Request
             $raw = (string) file_get_contents('php://input');
             $decoded = json_decode($raw, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new HttpException(400, 'The request body is not valid JSON.', 'INVALID_JSON');
+                throw new HttpException(400, 'Treść żądania nie jest prawidłowym JSON.', 'INVALID_JSON');
             }
             if (is_array($decoded)) {
                 $body = $decoded;

@@ -196,7 +196,7 @@ final class Auth
             'cost' => (int) App::config('security.bcrypt_cost', 12),
         ]);
         if (!is_string($hash) || $hash === '') {
-            throw new HttpException(500, 'The password could not be hashed.', 'PASSWORD_HASH_FAILED');
+            throw new HttpException(500, 'Nie można zahaszować hasła.', 'PASSWORD_HASH_FAILED');
         }
         return $hash;
     }

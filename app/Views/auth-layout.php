@@ -3,12 +3,14 @@
 /** @var string $title */
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title><?= e($title) ?></title>
   <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
+  <link rel="preload" href="<?= e(asset('fonts/inter-latin-wght-normal.woff2')) ?>" as="font" type="font/woff2" crossorigin>
   <script>
     (function () {
       try {
@@ -22,13 +24,16 @@
 <?= view_partial('partials/icons') ?>
 <div class="auth-page">
   <div class="auth-theme">
-    <button type="button" id="themeToggleAuth" aria-label="Toggle theme"><?= icon('moon') ?></button>
+    <button type="button" id="themeToggleAuth" aria-label="Przełącz motyw">
+      <?= icon('moon', 'icon icon-moon') ?>
+      <?= icon('sun', 'icon icon-sun') ?>
+    </button>
   </div>
   <div class="auth-shell">
     <div class="auth-brand">
       <div class="auth-brand-mark"><?= icon('vault') ?></div>
       <h1>Gift Vault</h1>
-      <p>Personal collection</p>
+      <p>Twoja prywatna kolekcja prezentów</p>
     </div>
     <?= $content ?>
   </div>

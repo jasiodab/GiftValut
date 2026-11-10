@@ -89,8 +89,8 @@ final class ProductRepository
         App::db()->run(
             'INSERT INTO "Product" (id, userId, name, url, normalizedUrl, description, imagePath, imageSourceUrl,
                 currentPrice, originalPrice, currency, availability, status, notes, autoTrack, storeId, categoryId, groupId,
-                lastCheckStatus, createdAt, updatedAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                lastCheckedAt, lastCheckStatus, lastCheckError, lastPriceCheckAt, createdAt, updatedAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $id,
                 $data['userId'],
@@ -110,7 +110,10 @@ final class ProductRepository
                 $data['storeId'] ?? null,
                 $data['categoryId'],
                 $data['groupId'] ?? null,
+                null,
                 'NEVER',
+                null,
+                null,
                 $now,
                 $now,
             ]

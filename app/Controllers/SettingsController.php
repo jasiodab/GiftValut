@@ -84,7 +84,7 @@ final class SettingsController extends Controller
         if (array_key_exists('currency', $input)) {
             $currency = strtoupper(trim((string) $input['currency']));
             if (!preg_match('/^[A-Z]{3}$/', $currency)) {
-                $validator->addError('currency', 'Choose a valid currency.');
+                $validator->addError('currency', 'Wybierz poprawną walutę.');
             } else {
                 $data['currency'] = $currency;
             }
@@ -92,7 +92,7 @@ final class SettingsController extends Controller
         if (array_key_exists('defaultProductView', $input)) {
             $view = (string) $input['defaultProductView'];
             if (!in_array($view, ['grid', 'list'], true)) {
-                $validator->addError('defaultProductView', 'Choose a valid product view.');
+                $validator->addError('defaultProductView', 'Wybierz poprawny widok produktów.');
             } else {
                 $data['defaultProductView'] = $view;
             }
@@ -129,7 +129,7 @@ final class SettingsController extends Controller
         AuthMiddleware::owner($this->request);
         $path = (new BackupService())->findBackupPath($filename);
         if ($path === null) {
-            throw new HttpException(404, 'Backup not found.', 'BACKUP_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono kopii zapasowej.', 'BACKUP_NOT_FOUND');
         }
 
         return Response::file($path, basename($path), [
@@ -143,7 +143,7 @@ final class SettingsController extends Controller
         AuthMiddleware::owner($this->request);
         $file = $this->request->file('backup');
         if ($file === null) {
-            throw new HttpException(400, 'Choose a backup ZIP file.', 'INVALID_BACKUP');
+            throw new HttpException(400, 'Wybierz plik kopii zapasowej ZIP.', 'INVALID_BACKUP');
         }
 
         $result = (new BackupService())->restore($file);

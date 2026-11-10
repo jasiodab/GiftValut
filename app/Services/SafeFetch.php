@@ -32,14 +32,14 @@ final class SafeFetch
         for ($redirects = 0; $redirects <= $maxRedirects; $redirects++) {
             $parts = parse_url($currentUrl);
             if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
-                throw new HttpException(400, 'Enter a valid product URL.', 'INVALID_URL');
+                throw new HttpException(400, 'Wpisz poprawny adres URL produktu.', 'INVALID_URL');
             }
             $scheme = strtolower((string) $parts['scheme']);
             if ($scheme !== 'http' && $scheme !== 'https') {
-                throw new HttpException(400, 'Only HTTP and HTTPS links are supported.', 'INVALID_PROTOCOL');
+                throw new HttpException(400, 'Obsługiwane są tylko linki HTTP i HTTPS.', 'INVALID_PROTOCOL');
             }
             if (isset($parts['user']) || isset($parts['pass'])) {
-                throw new HttpException(400, 'URLs containing credentials are not supported.', 'INVALID_URL');
+                throw new HttpException(400, 'Adresy URL zawierające dane logowania nie są obsługiwane.', 'INVALID_URL');
             }
 
             $host = strtolower((string) $parts['host']);
@@ -62,7 +62,7 @@ final class SafeFetch
 
             $handle = curl_init();
             if ($handle === false) {
-                throw new HttpException(500, 'The HTTP client could not be initialised.', 'FETCH_FAILED');
+                throw new HttpException(500, 'Nie można zainicjować klienta HTTP.', 'FETCH_FAILED');
             }
 
             curl_setopt_array($handle, [
@@ -113,33 +113,33 @@ final class SafeFetch
             curl_close($handle);
 
             if ($tooLarge) {
-                throw new HttpException(413, 'The response exceeded the safe size limit.', 'RESPONSE_TOO_LARGE');
+                throw new HttpException(413, 'Odpowiedź przekroczyła bezpieczny limit rozmiaru.', 'RESPONSE_TOO_LARGE');
             }
 
             $declaredLength = isset($headerMap['content-length']) ? (int) $headerMap['content-length'] : 0;
             if ($declaredLength > $maxBytes) {
-                throw new HttpException(413, 'The page is too large to process safely.', 'RESPONSE_TOO_LARGE');
+                throw new HttpException(413, 'Strona jest zbyt duża, aby bezpiecznie ją przetworzyć.', 'RESPONSE_TOO_LARGE');
             }
 
             if ($ok === false) {
                 if ($errorNumber === 28) {
-                    throw new HttpException(504, 'The store took too long to respond.', 'FETCH_TIMEOUT');
+                    throw new HttpException(504, 'Sklep zbyt długo odpowiadał.', 'FETCH_TIMEOUT');
                 }
-                throw new HttpException(502, 'The store could not be reached.', 'FETCH_FAILED');
+                throw new HttpException(502, 'Nie można osiągnąć sklepu.', 'FETCH_FAILED');
             }
 
             if (in_array($status, [301, 302, 303, 307, 308], true)) {
                 $location = $headerMap['location'] ?? '';
                 if ($location === '') {
-                    throw new HttpException(502, 'The store returned an invalid redirect.', 'BAD_REDIRECT');
+                    throw new HttpException(502, 'Sklep zwrócił nieprawidłowe przekierowanie.', 'BAD_REDIRECT');
                 }
                 if ($redirects === $maxRedirects) {
-                    throw new HttpException(502, 'The store redirected too many times.', 'TOO_MANY_REDIRECTS');
+                    throw new HttpException(502, 'Sklep zbyt wielokrotnie przekierował.', 'TOO_MANY_REDIRECTS');
                 }
                 $next = self::resolveUrl($location, $currentUrl);
                 $nextScheme = strtolower((string) parse_url($next, PHP_URL_SCHEME));
                 if ($nextScheme !== 'http' && $nextScheme !== 'https') {
-                    throw new HttpException(400, 'The redirect pointed to an unsupported protocol.', 'INVALID_REDIRECT');
+                    throw new HttpException(400, 'Przekierowanie wskazuje na nieobsługiwany protokół.', 'INVALID_REDIRECT');
                 }
                 $currentUrl = $next;
                 continue;
@@ -154,7 +154,7 @@ final class SafeFetch
             ];
         }
 
-        throw new HttpException(502, 'The store redirected too many times.', 'TOO_MANY_REDIRECTS');
+        throw new HttpException(502, 'Sklep zbyt wielokrotnie przekierował.', 'TOO_MANY_REDIRECTS');
     }
 
     public static function resolveUrl(string $location, string $base): string

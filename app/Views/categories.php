@@ -1,96 +1,83 @@
 <?php
 $categories = $categories ?? [];
+$currency = $settings['currency'] ?? 'PLN';
+$totalProducts = array_sum(array_map(static fn ($c) => (int) $c['productCount'], $categories));
+$totalValue = array_sum(array_map(static fn ($c) => (float) $c['totalValue'], $categories));
 ?>
 <div class="page-header">
-  <div>
-    <div class="eyebrow">Organisation</div>
-    <h1 class="page-title">Categories</h1>
-    <p class="page-desc">A quiet structure for everything you save.</p>
+  <div class="page-header-main">
+    <h1 class="page-title">Kategorie</h1>
+    <p class="page-desc">Uporządkuj kolekcję w prosty, czytelny sposób.</p>
   </div>
   <div class="page-actions">
-    <button class="btn btn-sm" type="button" id="newCategoryBtn"><?= icon('plus') ?> New category</button>
+    <button class="btn" type="button" id="newCategoryBtn"><?= icon('plus') ?> Nowa kategoria</button>
   </div>
 </div>
 
-<?php
-$totalProducts = array_sum(array_map(fn($c) => $c['productCount'], $categories));
-$totalValue = array_sum(array_map(fn($c) => $c['totalValue'], $categories));
-?>
-<div class="summary-grid">
-  <div class="card summary-fact">
-    <p>Categories</p>
-    <p><?= e(count($categories)) ?></p>
-    <p>In your vault</p>
+<?php if (!empty($categories)): ?>
+  <div class="stats-inline">
+    <span class="stat-inline"><strong><?= e(count($categories)) ?></strong> <?= e(plural_pl(count($categories), 'kategoria', 'kategorie', 'kategorii')) ?></span>
+    <span class="stat-inline"><strong><?= e($totalProducts) ?></strong> <?= e(plural_pl($totalProducts, 'produkt', 'produkty', 'produktów')) ?></span>
+    <span class="stat-inline"><strong><?= e(format_compact_money($totalValue, $currency)) ?></strong> łączna wartość</span>
   </div>
-  <div class="card summary-fact">
-    <p>Categorised products</p>
-    <p><?= e($totalProducts) ?></p>
-    <p>Across all categories</p>
-  </div>
-  <div class="card summary-fact">
-    <p>Categorised value</p>
-    <p><?= e(format_compact_money($totalValue, $settings['currency'] ?? 'PLN')) ?></p>
-    <p>Estimated</p>
-  </div>
-</div>
+<?php endif; ?>
 
 <?php if (empty($categories)): ?>
   <div class="empty-state">
     <div class="empty-icon"><?= icon('tags') ?></div>
-    <h3>No categories yet</h3>
-    <p>Create your first category.</p>
+    <h3>Nie masz jeszcze kategorii</h3>
+    <p>Utwórz pierwszą kategorię, aby łatwiej porządkować pomysły na prezenty.</p>
+    <div class="empty-action">
+      <button class="btn btn-sm" type="button" id="newCategoryBtn2"><?= icon('plus') ?> Utwórz kategorię</button>
+    </div>
   </div>
 <?php else: ?>
-  <div class="category-grid">
+  <div class="entity-list">
     <?php foreach ($categories as $c): ?>
-      <div class="card category-card" data-id="<?= e($c['id']) ?>">
-        <div class="category-top">
-          <a class="category-link" href="<?= e(url('/products?categoryId=' . urlencode($c['id']))) ?>">
-            <div class="category-icon" style="background:<?= e($c['color']) ?>22;color:<?= e($c['color']) ?>"><?= icon(lucide_name($c['icon'])) ?></div>
-            <div>
-              <div class="category-name-row">
-                <span class="category-name"><?= e($c['name']) ?></span>
-                <?php if ($c['isDefault']): ?><span class="badge badge-muted">Default</span><?php endif; ?>
-              </div>
-              <div class="category-meta"><?= e($c['productCount']) ?> product<?= $c['productCount'] === 1 ? '' : 's' ?></div>
-            </div>
-          </a>
-        </div>
-        <div class="category-foot">
-          <div>
-            <div class="category-value-label">Value</div>
-            <div class="category-value"><?= e(format_money($c['totalValue'], $settings['currency'] ?? 'PLN')) ?></div>
+      <div class="entity-row">
+        <div class="entity-icon" style="background:<?= e($c['color']) ?>22;color:<?= e($c['color']) ?>"><?= icon(lucide_name($c['icon'])) ?></div>
+        <div class="entity-body">
+          <div class="entity-name">
+            <a href="<?= e(url('/products?categoryId=' . urlencode($c['id']))) ?>"><?= e($c['name']) ?></a>
+            <?php if ($c['isDefault']): ?><span class="badge badge-muted">Domyślna</span><?php endif; ?>
           </div>
-          <a class="category-view" href="<?= e(url('/products?categoryId=' . urlencode($c['id']))) ?>">View products <?= icon('arrow-right') ?></a>
+          <div class="entity-meta"><?= e($c['productCount']) ?> <?= e(plural_pl((int) $c['productCount'], 'produkt', 'produkty', 'produktów')) ?></div>
         </div>
-        <?php
-        $max = max(array_map(fn($x) => $x['productCount'], $categories)) ?: 1;
-        $pct = round($c['productCount'] / $max * 100);
-        ?>
-        <div class="category-progress"><span style="width:<?= e($pct) ?>%;background:<?= e($c['color']) ?>"></span></div>
+        <div class="entity-value"><?= e(format_money($c['totalValue'], $currency)) ?></div>
+        <div class="entity-actions">
+          <a class="icon-btn" href="<?= e(url('/products?categoryId=' . urlencode($c['id']))) ?>" title="Zobacz produkty" aria-label="Zobacz produkty w kategorii <?= e($c['name']) ?>"><?= icon('arrow-right') ?></a>
+          <button class="icon-btn" type="button" data-edit-cat="<?= e($c['id']) ?>" data-name="<?= e($c['name']) ?>" data-color="<?= e($c['color']) ?>" data-icon="<?= e($c['icon']) ?>" title="Edytuj kategorię" aria-label="Edytuj kategorię <?= e($c['name']) ?>"><?= icon('edit-2') ?></button>
+          <?php if (!$c['isDefault']): ?>
+            <button class="icon-btn is-destructive" type="button" data-delete-cat="<?= e($c['id']) ?>" data-name="<?= e($c['name']) ?>" title="Usuń kategorię" aria-label="Usuń kategorię <?= e($c['name']) ?>"><?= icon('trash-2') ?></button>
+          <?php endif; ?>
+        </div>
       </div>
     <?php endforeach; ?>
   </div>
 <?php endif; ?>
 
-<!-- Category modal -->
-<div class="modal" id="categoryModal">
+<div class="modal" id="categoryModal" role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
   <div class="modal-dialog">
     <div class="modal-header">
-      <h2 id="catModalTitle">New category</h2>
-      <p id="catModalDesc">Pick a name, a soft accent colour and an icon.</p>
+      <div class="modal-header-row">
+        <div>
+          <h2 class="modal-title" id="catModalTitle">Nowa kategoria</h2>
+          <p class="modal-desc" id="catModalDesc">Wybierz nazwę, delikatny kolor i ikonę.</p>
+        </div>
+        <button class="modal-close" type="button" id="catClose" aria-label="Zamknij"><?= icon('x') ?></button>
+      </div>
     </div>
-    <div class="modal-body">
+    <div class="modal-form-body">
       <div class="field">
-        <label class="label" for="catName">Name</label>
-        <input class="input" id="catName" type="text">
+        <label class="label" for="catName">Nazwa</label>
+        <input class="input" id="catName" type="text" maxlength="40" placeholder="np. Książki, Biżuteria, Technologia">
       </div>
       <div class="field mt-3">
-        <label class="label">Colour</label>
+        <label class="label">Kolor</label>
         <div class="swatches" id="catSwatches"></div>
       </div>
       <div class="field mt-3">
-        <label class="label">Icon</label>
+        <label class="label">Ikona</label>
         <div class="icon-picker" id="catIcons"></div>
       </div>
       <input type="hidden" id="catId">
@@ -98,8 +85,8 @@ $totalValue = array_sum(array_map(fn($c) => $c['totalValue'], $categories));
       <input type="hidden" id="catIcon" value="Tag">
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline btn-sm" type="button" id="catCancel">Cancel</button>
-      <button class="btn btn-sm" type="button" id="catSave">Save</button>
+      <button class="btn btn-outline btn-sm" type="button" id="catCancel">Anuluj</button>
+      <button class="btn btn-sm" type="button" id="catSave">Utwórz kategorię</button>
     </div>
   </div>
 </div>

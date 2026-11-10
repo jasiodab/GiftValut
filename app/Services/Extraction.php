@@ -34,11 +34,11 @@ final class Extraction
                 'timeoutMs' => 15000,
             ]);
         } catch (Throwable $error) {
-            $message = $error->getMessage() !== '' ? $error->getMessage() : 'The store could not be reached.';
+            $message = $error->getMessage() !== '' ? $error->getMessage() : 'Sklep nie mógł zostać osiągnięty.';
             return [
                 'success' => false,
                 'error' => $message,
-                'warnings' => ['You can still add this product and fill in the details manually.'],
+                'warnings' => ['Możesz nadal dodać produkt i wypełnić szczegóły ręcznie.'],
                 'strategies' => $strategies,
                 'data' => self::emptyData($url, $defaultCurrency, $categories),
             ];
@@ -50,8 +50,8 @@ final class Extraction
         if ($status === 401 || $status === 403) {
             return [
                 'success' => false,
-                'error' => 'This store refused automated access.',
-                'warnings' => ['The store blocks automated readers. Add the product manually using the details you see in your browser.'],
+                'error' => 'Sklep odmawia automatycznego dostępu.',
+                'warnings' => ['Sklep blokuje automatyczne czytniki. Dodaj produkt ręcznie, używając szczegółów, które widzisz w przeglądarce.'],
                 'strategies' => $strategies,
                 'data' => self::emptyData($responseUrl, $defaultCurrency, $categories),
             ];
@@ -59,8 +59,8 @@ final class Extraction
         if ($status === 429) {
             return [
                 'success' => false,
-                'error' => 'The store is rate-limiting requests.',
-                'warnings' => ['Please wait a while, or add this product manually. Gift Vault will not retry aggressively.'],
+                'error' => 'Sklep ogranicza liczbę żądań.',
+                'warnings' => ['Poczekaj chwilę lub dodaj produkt ręcznie. Gift Vault nie będzie ponawiać żądań zbyt agresywnie.'],
                 'strategies' => $strategies,
                 'data' => self::emptyData($responseUrl, $defaultCurrency, $categories),
             ];
@@ -68,8 +68,8 @@ final class Extraction
         if ($status < 200 || $status >= 400) {
             return [
                 'success' => false,
-                'error' => 'The store responded with HTTP ' . $status . '.',
-                'warnings' => ['You can still add this product manually.'],
+                'error' => 'Sklep odpowiedział kodem HTTP ' . $status . '.',
+                'warnings' => ['Możesz nadal dodać produkt ręcznie.'],
                 'strategies' => $strategies,
                 'data' => self::emptyData($responseUrl, $defaultCurrency, $categories),
             ];
@@ -82,8 +82,8 @@ final class Extraction
             && !str_contains($contentType, 'text/plain')) {
             return [
                 'success' => false,
-                'error' => 'The link did not return a product page.',
-                'warnings' => ['Only HTML product pages can be read automatically.'],
+                'error' => 'Link nie zwrócił strony produktu.',
+                'warnings' => ['Automatycznie można odczytać tylko strony produktu w formacie HTML.'],
                 'strategies' => $strategies,
                 'data' => self::emptyData($responseUrl, $defaultCurrency, $categories),
             ];
@@ -94,8 +94,8 @@ final class Extraction
         if ($document === null) {
             return [
                 'success' => false,
-                'error' => 'The page could not be parsed.',
-                'warnings' => ['You can still add this product manually.'],
+                'error' => 'Nie można przetworzyć strony.',
+                'warnings' => ['Możesz nadal dodać produkt ręcznie.'],
                 'strategies' => $strategies,
                 'data' => self::emptyData($responseUrl, $defaultCurrency, $categories),
             ];
@@ -129,7 +129,7 @@ final class Extraction
             }
             $decoded = json_decode($content, true);
             if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
-                $warnings[] = 'One structured-data block could not be read.';
+                $warnings[] = 'Jednego z bloków danych ustrukturyzowanych nie można było odczytać.';
                 continue;
             }
             foreach (self::collectProductNodes($decoded) as $product) {
@@ -173,7 +173,7 @@ final class Extraction
             if (preg_match('#^https?://#i', $resolved)) {
                 $imageSourceUrl = $resolved;
             } else {
-                $warnings[] = 'The page referenced an invalid image URL.';
+                $warnings[] = 'Strona odwołuje się do nieprawidłowego adresu URL obrazu.';
             }
         }
 
@@ -242,10 +242,10 @@ final class Extraction
         }
 
         if ($currentPrice === null) {
-            $warnings[] = 'No reliable price was found on the page. You can enter it manually.';
+            $warnings[] = 'Nie znaleziono wiarygodnej ceny na stronie. Możesz wpisać ją ręcznie.';
         }
         if ($description === null) {
-            $warnings[] = 'No product description was available.';
+            $warnings[] = 'Brak opisu produktu.';
         }
 
         $imagePath = null;
@@ -254,10 +254,10 @@ final class Extraction
             if ($stored !== null) {
                 $imagePath = $stored['path'];
             } else {
-                $warnings[] = 'The product image could not be downloaded. You can upload one manually.';
+                $warnings[] = 'Nie można pobrać zdjęcia produktu. Możesz przesłać je ręcznie.';
             }
         } elseif ($imageSourceUrl !== null && !$downloadImage) {
-            $warnings[] = 'Image download was skipped for this update.';
+            $warnings[] = 'Pobieranie zdjęcia zostało pominięte przy tej aktualizacji.';
         }
 
         $suggested = $categories !== []
@@ -268,10 +268,10 @@ final class Extraction
             : null;
 
         if ($metaName === null) {
-            $warnings[] = 'The page may require JavaScript or block automated access. Add the product manually instead.';
+            $warnings[] = 'Strona może wymagać JavaScriptu lub blokować automatyczny dostęp. Dodaj produkt ręcznie.';
             return [
                 'success' => false,
-                'error' => 'No product details could be identified on this page.',
+                'error' => 'Nie można zidentyfikować szczegółów produktu na tej stronie.',
                 'warnings' => $warnings,
                 'strategies' => $strategies,
                 'data' => self::emptyData($responseUrl, $defaultCurrency, $categories),

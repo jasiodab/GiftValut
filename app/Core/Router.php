@@ -89,6 +89,6 @@ final class Router
             return Response::text((string) $result);
         }
 
-        throw new HttpException(404, 'The requested page was not found.', 'NOT_FOUND');
+        throw new HttpException(404, 'Żądana strona nie została znaleziona.', 'NOT_FOUND');
     }
 }

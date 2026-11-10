@@ -70,7 +70,7 @@ final class CategoryController extends Controller
         $userId = (string) $user['id'];
         $existing = $this->categories->findForUser($id, $userId);
         if ($existing === null) {
-            throw new HttpException(404, 'Category not found.', 'CATEGORY_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono kategorii.', 'CATEGORY_NOT_FOUND');
         }
 
         $input = $this->jsonInput();
@@ -110,17 +110,17 @@ final class CategoryController extends Controller
         $userId = (string) $user['id'];
         $existing = $this->categories->findForUser($id, $userId);
         if ($existing === null) {
-            throw new HttpException(404, 'Category not found.', 'CATEGORY_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono kategorii.', 'CATEGORY_NOT_FOUND');
         }
         if ((string) $existing['slug'] === 'other') {
-            throw new HttpException(400, 'The Other category is the fallback and cannot be deleted.', 'CATEGORY_REQUIRED');
+            throw new HttpException(400, 'Kategoria „Inne” jest podstawową i nie może zostać usunięta.', 'CATEGORY_REQUIRED');
         }
 
         $count = $this->categories->productCount($id, $userId);
         if ($count > 0) {
             throw new HttpException(
                 409,
-                'This category still contains ' . $count . ' product' . ($count === 1 ? '' : 's') . '. Move them before deleting it.',
+                'Ta kategoria zawiera nadal ' . $count . ' produkt' . ($count === 1 ? 'ów' : 'y') . '. Przenieś je przed usunięciem kategorii.',
                 'CATEGORY_IN_USE'
             );
         }
@@ -136,7 +136,7 @@ final class CategoryController extends Controller
         }
         $color = trim((string) $input['color']);
         if (!preg_match('/^#[0-9a-fA-F]{6}$/', $color)) {
-            $validator->addError('color', 'Choose a valid color.');
+            $validator->addError('color', 'Wybierz poprawny kolor.');
             return '#D9A3B0';
         }
         return strtoupper($color);
@@ -149,7 +149,7 @@ final class CategoryController extends Controller
         }
         $icon = trim((string) $input['icon']);
         if ($icon === '' || mb_strlen($icon) > 40) {
-            $validator->addError('icon', 'Choose a valid icon.');
+            $validator->addError('icon', 'Wybierz poprawną ikonę.');
             return 'Tag';
         }
         return $icon;

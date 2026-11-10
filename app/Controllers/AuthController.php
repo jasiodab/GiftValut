@@ -41,18 +41,18 @@ final class AuthController extends Controller
     {
         RateLimitMiddleware::bootstrap($this->request);
         $validator = new Validator($this->jsonInput());
-        $setupKey = $validator->requiredString('setupKey', 500, 'Setup key');
-        $username = $validator->requiredString('username', 40, 'Username', 3);
-        $email = $validator->email('email', 'Email');
-        $password = $validator->requiredString('password', 500, 'Password', 12);
+        $setupKey = $validator->requiredString('setupKey', 500, 'Klucz konfiguracji');
+        $username = $validator->requiredString('username', 40, 'Nazwa użytkownika', 3);
+        $email = $validator->email('email', 'Adres e-mail');
+        $password = $validator->requiredString('password', 500, 'Hasło', 12);
         $validator->throwIfFails();
 
         $expectedKey = (string) App::config('security.owner_setup_key');
         if ($expectedKey === '' || !hash_equals($expectedKey, $setupKey)) {
-            throw new HttpException(403, 'Invalid setup key.', 'INVALID_SETUP_KEY');
+            throw new HttpException(403, 'Nieprawidłowy klucz konfiguracji.', 'INVALID_SETUP_KEY');
         }
         if ($this->users->ownerCount() > 0) {
-            throw new HttpException(409, 'Owner already exists.', 'OWNER_EXISTS');
+            throw new HttpException(409, 'Konto właściciela już istnieje.', 'OWNER_EXISTS');
         }
         $this->assertUniqueIdentity($username, (string) $email);
 
@@ -68,13 +68,13 @@ final class AuthController extends Controller
     {
         RateLimitMiddleware::login($this->request);
         $validator = new Validator($this->jsonInput());
-        $login = $validator->requiredString('username', 190, 'Username or email');
-        $password = $validator->requiredString('password', 500, 'Password');
+        $login = $validator->requiredString('username', 190, 'Nazwa użytkownika lub adres e-mail');
+        $password = $validator->requiredString('password', 500, 'Hasło');
         $validator->throwIfFails();
 
         $user = $this->users->findByLogin($login);
         if ($user === null || ($user['status'] ?? '') !== 'ACTIVE' || !Auth::verifyPassword($password, (string) $user['passwordHash'])) {
-            throw new HttpException(401, 'Invalid credentials.', 'INVALID_CREDENTIALS');
+            throw new HttpException(401, 'Nieprawidłowa nazwa użytkownika lub hasło.', 'INVALID_CREDENTIALS');
         }
 
         if (Auth::isLegacyHash((string) $user['passwordHash'])) {
@@ -97,7 +97,7 @@ final class AuthController extends Controller
     {
         $user = Auth::user();
         if ($user === null) {
-            return Response::error(401, 'UNAUTHORIZED', 'Not authenticated.');
+            return Response::error(401, 'UNAUTHORIZED', 'Nie jesteś zalogowany.');
         }
         return Response::json(['user' => Serializer::user($user, true)]);
     }
@@ -106,13 +106,13 @@ final class AuthController extends Controller
     {
         $user = AuthMiddleware::user($this->request);
         $validator = new Validator($this->jsonInput());
-        $current = $validator->requiredString('currentPassword', 500, 'Current password');
-        $new = $validator->requiredString('newPassword', 500, 'New password', 12);
+        $current = $validator->requiredString('currentPassword', 500, 'Obecne hasło');
+        $new = $validator->requiredString('newPassword', 500, 'Nowe hasło', 12);
         $validator->throwIfFails();
 
         $row = $this->users->findById((string) $user['id']);
         if ($row === null || !Auth::verifyPassword($current, (string) $row['passwordHash'])) {
-            throw new HttpException(401, 'Current password is incorrect.', 'INVALID_PASSWORD');
+            throw new HttpException(401, 'Obecne hasło jest nieprawidłowe.', 'INVALID_PASSWORD');
         }
 
         $this->users->updatePassword((string) $user['id'], Auth::hashPassword($new));
@@ -127,14 +127,14 @@ final class AuthController extends Controller
         $hours = 48;
         if (isset($input['expiresInHours'])) {
             if (!is_numeric($input['expiresInHours'])) {
-                throw new HttpException(400, 'Please check the highlighted fields.', 'VALIDATION_ERROR', [
-                    'fieldErrors' => ['expiresInHours' => ['Enter a valid number of hours.']],
+                throw new HttpException(400, 'Sprawdź zaznaczone pola.', 'VALIDATION_ERROR', [
+                    'fieldErrors' => ['expiresInHours' => ['Wpisz poprawną liczbę godzin.']],
                 ]);
             }
             $hours = (int) $input['expiresInHours'];
             if ($hours < 1 || $hours > 720) {
-                throw new HttpException(400, 'Please check the highlighted fields.', 'VALIDATION_ERROR', [
-                    'fieldErrors' => ['expiresInHours' => ['Expiration must be between 1 and 720 hours.']],
+                throw new HttpException(400, 'Sprawdź zaznaczone pola.', 'VALIDATION_ERROR', [
+                    'fieldErrors' => ['expiresInHours' => ['Czas ważności musi mieścić się między 1 a 720 godzinami.']],
                 ]);
             }
         }
@@ -164,7 +164,7 @@ final class AuthController extends Controller
     {
         AuthMiddleware::owner($this->request);
         if (!$this->invitations->revoke($id)) {
-            throw new HttpException(404, 'Invitation not found.', 'INVITATION_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono zaproszenia.', 'INVITATION_NOT_FOUND');
         }
         return Response::json(['ok' => true]);
     }
@@ -172,10 +172,10 @@ final class AuthController extends Controller
     public function acceptInvitation(): Response
     {
         $validator = new Validator($this->jsonInput());
-        $token = $validator->requiredString('token', 500, 'Invitation token');
-        $username = $validator->requiredString('username', 40, 'Username', 3);
-        $email = $validator->email('email', 'Email');
-        $password = $validator->requiredString('password', 500, 'Password', 12);
+        $token = $validator->requiredString('token', 500, 'Token zaproszenia');
+        $username = $validator->requiredString('username', 40, 'Nazwa użytkownika', 3);
+        $email = $validator->email('email', 'Adres e-mail');
+        $password = $validator->requiredString('password', 500, 'Hasło', 12);
         $validator->throwIfFails();
 
         $user = App::db()->transaction(function () use ($token, $username, $email, $password): array {
@@ -184,12 +184,12 @@ final class AuthController extends Controller
                 || $invitation['revokedAt'] !== null
                 || $invitation['usedAt'] !== null
                 || (int) $invitation['expiresAt'] < Str::nowMs()) {
-                throw new HttpException(400, 'Invalid or expired invitation.', 'INVALID_INVITATION');
+                throw new HttpException(400, 'Zaproszenie jest nieprawidłowe lub wygasło.', 'INVALID_INVITATION');
             }
             $this->assertUniqueIdentity($username, (string) $email);
             $created = $this->users->create($username, (string) $email, Auth::hashPassword($password), 'USER');
             if (!$this->invitations->consume((string) $invitation['id'], (string) $created['id'])) {
-                throw new HttpException(400, 'Invalid or expired invitation.', 'INVALID_INVITATION');
+                throw new HttpException(400, 'Zaproszenie jest nieprawidłowe lub wygasło.', 'INVALID_INVITATION');
             }
             return $created;
         });
@@ -220,10 +220,10 @@ final class AuthController extends Controller
     {
         $owner = AuthMiddleware::owner($this->request);
         if ($id === (string) $owner['id']) {
-            throw new HttpException(400, 'Cannot block yourself.', 'INVALID');
+            throw new HttpException(400, 'Nie możesz zablokować własnego konta.', 'INVALID');
         }
         if (!$this->users->setStatus($id, 'DISABLED')) {
-            throw new HttpException(404, 'User not found.', 'USER_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono użytkownika.', 'USER_NOT_FOUND');
         }
         (new SessionRepository())->revokeAllForUser($id);
         return Response::json(['ok' => true]);
@@ -233,7 +233,7 @@ final class AuthController extends Controller
     {
         AuthMiddleware::owner($this->request);
         if (!$this->users->setStatus($id, 'ACTIVE')) {
-            throw new HttpException(404, 'User not found.', 'USER_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono użytkownika.', 'USER_NOT_FOUND');
         }
         return Response::json(['ok' => true]);
     }
@@ -242,10 +242,10 @@ final class AuthController extends Controller
     {
         $owner = AuthMiddleware::owner($this->request);
         if ($id === (string) $owner['id']) {
-            throw new HttpException(400, 'Cannot delete yourself.', 'INVALID');
+            throw new HttpException(400, 'Nie możesz usunąć własnego konta.', 'INVALID');
         }
         if (!$this->users->delete($id)) {
-            throw new HttpException(404, 'User not found.', 'USER_NOT_FOUND');
+            throw new HttpException(404, 'Nie znaleziono użytkownika.', 'USER_NOT_FOUND');
         }
         return Response::json(['ok' => true]);
     }
@@ -259,7 +259,7 @@ final class AuthController extends Controller
         }
         $next = (string) $this->request->query('next', '');
         return View::render('auth/login', [
-            'title' => 'Sign in · Gift Vault',
+            'title' => 'Zaloguj się · Gift Vault',
             'next' => $this->safeNext($next),
             'needsSetup' => $this->users->ownerCount() === 0,
             'layout' => 'auth-layout',
@@ -277,7 +277,7 @@ final class AuthController extends Controller
 
         $user = $this->users->findByLogin($login);
         if ($user === null || ($user['status'] ?? '') !== 'ACTIVE' || !Auth::verifyPassword($password, (string) $user['passwordHash'])) {
-            Flash::error('Invalid credentials.');
+            Flash::error('Nieprawidłowa nazwa użytkownika lub hasło.');
             return Response::redirect(url('login' . ($next !== '' ? '?next=' . rawurlencode($next) : '')));
         }
 
@@ -295,7 +295,7 @@ final class AuthController extends Controller
     {
         \App\Middleware\CsrfMiddleware::enforce($this->request);
         Auth::logout($this->request);
-        Flash::success('You have been signed out.');
+        Flash::success('Zostałeś wylogowany.');
         return Response::redirect(url('login'));
     }
 
@@ -305,7 +305,7 @@ final class AuthController extends Controller
             return Response::redirect(url('login'));
         }
         return View::render('auth/setup', [
-            'title' => 'Create your vault · Gift Vault',
+            'title' => 'Utwórz swoją skarbnicę · Gift Vault',
             'layout' => 'auth-layout',
         ], 'auth-layout');
     }
@@ -322,26 +322,26 @@ final class AuthController extends Controller
 
         $expectedKey = (string) App::config('security.owner_setup_key');
         if ($expectedKey === '' || !hash_equals($expectedKey, $setupKey)) {
-            Flash::error('Invalid setup key. Check OWNER_SETUP_KEY in your .env file.');
+            Flash::error('Nieprawidłowy klucz konfiguracji. Sprawdź OWNER_SETUP_KEY w pliku .env.');
             return Response::redirect(url('setup'));
         }
         if ($this->users->ownerCount() > 0) {
             return Response::redirect(url('login'));
         }
         if (mb_strlen($username) < 3 || mb_strlen($username) > 40) {
-            Flash::error('Username must be between 3 and 40 characters.');
+            Flash::error('Nazwa użytkownika musi mieć od 3 do 40 znaków.');
             return Response::redirect(url('setup'));
         }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Flash::error('Enter a valid email address.');
+            Flash::error('Wpisz poprawny adres e-mail.');
             return Response::redirect(url('setup'));
         }
         if (mb_strlen($password) < 12) {
-            Flash::error('Password must be at least 12 characters.');
+            Flash::error('Hasło musi mieć co najmniej 12 znaków.');
             return Response::redirect(url('setup'));
         }
         if ($this->users->findByUsername($username) !== null || $this->users->findByEmail($email) !== null) {
-            Flash::error('That username or email is already in use.');
+            Flash::error('Ta nazwa użytkownika lub adres e-mail są już zajęte.');
             return Response::redirect(url('setup'));
         }
 
@@ -349,7 +349,7 @@ final class AuthController extends Controller
         $this->users->claimUnownedData((string) $user['id']);
         AccountDefaults::ensure((string) $user['id']);
         Auth::login($this->request, $user);
-        Flash::success('Welcome to Gift Vault. Your vault is ready.');
+        Flash::success('Witaj w Gift Vault. Twoja skarbnica jest gotowa.');
         return Response::redirect(url('/'));
     }
 
@@ -364,7 +364,7 @@ final class AuthController extends Controller
             && $invitation['usedAt'] === null
             && (int) $invitation['expiresAt'] >= Str::nowMs();
         return View::render('auth/invite', [
-            'title' => 'Accept invitation · Gift Vault',
+            'title' => 'Przyjmij zaproszenie · Gift Vault',
             'layout' => 'auth-layout',
             'token' => $token,
             'valid' => $valid,
@@ -383,37 +383,37 @@ final class AuthController extends Controller
             || $invitation['revokedAt'] !== null
             || $invitation['usedAt'] !== null
             || (int) $invitation['expiresAt'] < Str::nowMs()) {
-            Flash::error('Invalid or expired invitation.');
+            Flash::error('Zaproszenie jest nieprawidłowe lub wygasło.');
             return Response::redirect(url('invite/' . rawurlencode($token)));
         }
         if (mb_strlen($username) < 3 || mb_strlen($username) > 40) {
-            Flash::error('Username must be between 3 and 40 characters.');
+            Flash::error('Nazwa użytkownika musi mieć od 3 do 40 znaków.');
             return Response::redirect(url('invite/' . rawurlencode($token)));
         }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Flash::error('Enter a valid email address.');
+            Flash::error('Wpisz poprawny adres e-mail.');
             return Response::redirect(url('invite/' . rawurlencode($token)));
         }
         if (mb_strlen($password) < 12) {
-            Flash::error('Password must be at least 12 characters.');
+            Flash::error('Hasło musi mieć co najmniej 12 znaków.');
             return Response::redirect(url('invite/' . rawurlencode($token)));
         }
         if ($this->users->findByUsername($username) !== null || $this->users->findByEmail($email) !== null) {
-            Flash::error('That username or email is already in use.');
+            Flash::error('Ta nazwa użytkownika lub adres e-mail są już zajęte.');
             return Response::redirect(url('invite/' . rawurlencode($token)));
         }
 
         $user = App::db()->transaction(function () use ($invitation, $username, $email, $password): array {
             $created = $this->users->create($username, $email, Auth::hashPassword($password), 'USER');
             if (!$this->invitations->consume((string) $invitation['id'], (string) $created['id'])) {
-                throw new HttpException(400, 'Invalid or expired invitation.', 'INVALID_INVITATION');
+                throw new HttpException(400, 'Zaproszenie jest nieprawidłowe lub wygasło.', 'INVALID_INVITATION');
             }
             return $created;
         });
 
         AccountDefaults::ensure((string) $user['id']);
         Auth::login($this->request, $user);
-        Flash::success('Your account is ready. Welcome to Gift Vault.');
+        Flash::success('Twoje konto jest gotowe. Witaj w Gift Vault.');
         return Response::redirect(url('/'));
     }
 
@@ -427,27 +427,27 @@ final class AuthController extends Controller
         $row = $this->users->findById((string) $user['id']);
 
         if ($row === null || !Auth::verifyPassword($current, (string) $row['passwordHash'])) {
-            Flash::error('Current password is incorrect.');
+            Flash::error('Obecne hasło jest nieprawidłowe.');
             return Response::redirect(url('settings#account'));
         }
         if (mb_strlen($new) < 12) {
-            Flash::error('New password must be at least 12 characters.');
+            Flash::error('Nowe hasło musi mieć co najmniej 12 znaków.');
             return Response::redirect(url('settings#account'));
         }
 
         $this->users->updatePassword((string) $user['id'], Auth::hashPassword($new));
         Auth::revokeAllSessions((string) $user['id']);
-        Flash::success('Password updated. Please sign in again.');
+        Flash::success('Hasło zostało zmienione. Zaloguj się ponownie.');
         return Response::redirect(url('login'));
     }
 
     private function assertUniqueIdentity(string $username, string $email): void
     {
         if ($this->users->findByUsername($username) !== null) {
-            throw new HttpException(409, 'That username is already in use.', 'CONFLICT');
+            throw new HttpException(409, 'Ta nazwa użytkownika jest już zajęta.', 'CONFLICT');
         }
         if ($this->users->findByEmail($email) !== null) {
-            throw new HttpException(409, 'That email address is already in use.', 'CONFLICT');
+            throw new HttpException(409, 'Ten adres e-mail jest już zajęty.', 'CONFLICT');
         }
     }
 
