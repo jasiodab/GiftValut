@@ -16,13 +16,12 @@ final class ProductRepository
         LEFT JOIN "Category" c ON c.id = p.categoryId';
 
     /**
-     * @param array{search?: string, status?: string, categoryId?: string, favorite?: bool, sort?: string} $filters
+     * @param array{search?: string, status?: string, categoryId?: string, groupId?: string, favorite?: bool, sort?: string} $filters
      * @return array{products: list<array<string, mixed>>, total: int}
      */
     public function paginateForUser(string $userId, array $filters, int $page, int $pageSize, TagRepository $tags): array
     {
         [$where, $params] = $this->buildWhere($userId, $filters);
-
         $total = (int) App::db()->value(
             'SELECT COUNT(*) FROM "Product" p
              LEFT JOIN "Store" s ON s.id = p.storeId
@@ -89,7 +88,7 @@ final class ProductRepository
         $now = Str::nowMs();
         App::db()->run(
             'INSERT INTO "Product" (id, userId, name, url, normalizedUrl, description, imagePath, imageSourceUrl,
-                currentPrice, originalPrice, currency, availability, status, notes, autoTrack, storeId, categoryId,
+                currentPrice, originalPrice, currency, availability, status, notes, autoTrack, storeId, categoryId, groupId,
                 lastCheckStatus, createdAt, updatedAt)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
@@ -110,6 +109,7 @@ final class ProductRepository
                 0,
                 $data['storeId'] ?? null,
                 $data['categoryId'],
+                $data['groupId'] ?? null,
                 'NEVER',
                 $now,
                 $now,
@@ -123,7 +123,7 @@ final class ProductRepository
         $allowed = [
             'name', 'url', 'normalizedUrl', 'description', 'imagePath', 'imageSourceUrl',
             'currentPrice', 'originalPrice', 'currency', 'availability', 'status', 'notes',
-            'storeId', 'categoryId',
+            'storeId', 'categoryId', 'groupId',
         ];
         $sets = [];
         $params = [];
@@ -232,6 +232,11 @@ final class ProductRepository
         if (($filters['categoryId'] ?? '') !== '') {
             $where .= ' AND p.categoryId = ?';
             $params[] = $filters['categoryId'];
+        }
+
+        if (($filters['groupId'] ?? '') !== '') {
+            $where .= ' AND p.groupId = ?';
+            $params[] = $filters['groupId'];
         }
 
         $search = trim((string) ($filters['search'] ?? ''));

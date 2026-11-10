@@ -47,6 +47,7 @@ final class ProductController extends Controller
             'search' => $search,
             'status' => $status,
             'categoryId' => (string) ($query['categoryId'] ?? ''),
+            'groupId' => (string) ($query['groupId'] ?? ''),
             'favorite' => $favorite,
             'sort' => $sort,
         ], $page, $pageSize, $this->service->tagRepository());
@@ -205,6 +206,13 @@ final class ProductController extends Controller
             $categoryId = $validator->optionalString('categoryId', 191, 'Category');
             if ($categoryId !== null) {
                 $data['categoryId'] = $categoryId;
+            }
+        }
+
+        if (array_key_exists('groupId', $payload)) {
+            $groupId = $validator->optionalString('groupId', 191, 'Group');
+            if ($groupId !== null) {
+                $data['groupId'] = $groupId;
             }
         }
 

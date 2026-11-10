@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Core\App;
 use App\Core\HttpException;
+use App\Repositories\CategoryGroupRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\ProductRepository;
 use App\Repositories\SettingsRepository;
@@ -17,6 +18,7 @@ final class ProductService
 {
     private ProductRepository $products;
     private CategoryRepository $categories;
+    private CategoryGroupRepository $groups;
     private StoreRepository $stores;
     private TagRepository $tags;
     private UploadRepository $uploads;
@@ -25,6 +27,7 @@ final class ProductService
     {
         $this->products = new ProductRepository();
         $this->categories = new CategoryRepository();
+        $this->groups = new CategoryGroupRepository();
         $this->stores = new StoreRepository();
         $this->tags = new TagRepository();
         $this->uploads = new UploadRepository();
@@ -71,6 +74,12 @@ final class ProductService
         }
 
         $category = $this->resolveCategory($userId, $input['categoryId'] ?? null);
+        $groupId = $input['groupId'] ?? null;
+        if ($groupId !== null && $groupId !== '') {
+            if (!$this->groups->canManageProducts($groupId, $userId)) {
+                throw new HttpException(403, 'Brak uprawnień do dodawania produktów do tej grupy.', 'FORBIDDEN');
+            }
+        }
         $store = $this->resolveStore(
             $userId,
             $input['storeName'] ?? null,
@@ -101,6 +110,7 @@ final class ProductService
                 'notes' => self::cleanOptional($input['notes'] ?? null),
                 'storeId' => $store['id'],
                 'categoryId' => $category['id'],
+                'groupId' => $groupId,
             ]);
             $this->syncTags($userId, $id, $tags);
             return $id;
@@ -184,6 +194,20 @@ final class ProductService
         $newTags = null;
         if (array_key_exists('tags', $input)) {
             $newTags = self::cleanTagNames($input['tags'] ?? []);
+        }
+
+        // Group permission check for products that belong to a group.
+        $existingGroupId = $existing['groupId'] ?? null;
+        $newGroupId = array_key_exists('groupId', $input) ? ($input['groupId'] ?? null) : $existingGroupId;
+        if ($newGroupId !== null && $newGroupId !== '') {
+            if (!$this->groups->canEditProducts($newGroupId, $userId)) {
+                throw new HttpException(403, 'Brak uprawnień do edytowania produktów w tej grupie.', 'FORBIDDEN');
+            }
+        } elseif ($existingGroupId !== null && $existingGroupId !== '') {
+            // Removing a product from a group requires edit rights on that group too.
+            if (!$this->groups->canEditProducts($existingGroupId, $userId)) {
+                throw new HttpException(403, 'Brak uprawnień do wyjmowania produktu z tej grupy.', 'FORBIDDEN');
+            }
         }
 
         $oldImage = $existing['imagePath'] !== null ? (string) $existing['imagePath'] : null;

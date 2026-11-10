@@ -1,7 +1,8 @@
 <?php
-@ob_start();
 
 declare(strict_types=1);
+
+@ob_start();
 
 /**
  * Gift Vault front controller.
@@ -23,6 +24,7 @@ require dirname(__DIR__) . '/app/bootstrap.php';
 
 use App\Controllers\AuthController;
 use App\Controllers\CategoryController;
+use App\Controllers\CategoryGroupController;
 use App\Controllers\DashboardController;
 use App\Controllers\ExtractController;
 use App\Controllers\PageController;
@@ -77,6 +79,7 @@ $router->get('/', [PageController::class, 'dashboard']);
 $router->get('/products', [PageController::class, 'products']);
 $router->get('/products/{id}', [PageController::class, 'productShow']);
 $router->get('/categories', [PageController::class, 'categories']);
+$router->get('/groups', [PageController::class, 'groups']);
 $router->get('/settings', [PageController::class, 'settings']);
 $router->post('/settings/password', [AuthController::class, 'changePasswordForm']);
 $router->get('/login', [AuthController::class, 'showLogin']);
@@ -122,6 +125,19 @@ $router->get('/api/categories', [CategoryController::class, 'index']);
 $router->post('/api/categories', [CategoryController::class, 'create']);
 $router->patch('/api/categories/{id}', [CategoryController::class, 'update']);
 $router->delete('/api/categories/{id}', [CategoryController::class, 'delete']);
+
+$router->get('/api/category-groups', [CategoryGroupController::class, 'index']);
+$router->post('/api/category-groups', [CategoryGroupController::class, 'create']);
+$router->get('/api/category-groups/{id}', [CategoryGroupController::class, 'show']);
+$router->patch('/api/category-groups/{id}', [CategoryGroupController::class, 'update']);
+$router->delete('/api/category-groups/{id}', [CategoryGroupController::class, 'delete']);
+$router->get('/api/category-groups/{id}/members', [CategoryGroupController::class, 'members']);
+$router->post('/api/category-groups/{id}/invitations', [CategoryGroupController::class, 'addMember']);
+$router->patch('/api/category-groups/{id}/members/{userId}', [CategoryGroupController::class, 'updateMemberRole']);
+$router->delete('/api/category-groups/{id}/members/{userId}', [CategoryGroupController::class, 'removeMember']);
+$router->get('/api/category-groups/{id}/invitations', [CategoryGroupController::class, 'invitations']);
+$router->delete('/api/category-groups/{id}/invitations/{invitationId}', [CategoryGroupController::class, 'revokeInvitation']);
+$router->post('/api/category-group-invitations/accept/{token}', [CategoryGroupController::class, 'acceptInvitation']);
 
 $router->get('/api/tags', [TagController::class, 'index']);
 $router->post('/api/extract', [ExtractController::class, 'create']);

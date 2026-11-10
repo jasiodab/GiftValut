@@ -74,6 +74,7 @@
   const modalBody = document.getElementById('pfBody');
   const modalFooter = document.getElementById('pfFooter');
   let categories = [];
+  let groups = [];
   let settings = { currency: 'PLN' };
   let extracting = false;
   let saving = false;
@@ -105,7 +106,7 @@
     form = {
       url: '', name: '', description: '', imagePath: '', imageSourceUrl: '',
       currentPrice: '', originalPrice: '', currency: settings.currency || 'PLN',
-      availability: '', status: 'TO_CONSIDER', categoryId: '', storeName: '',
+      availability: '', status: 'TO_CONSIDER', categoryId: '', groupId: '', storeName: '',
       storeDomain: '', notes: '', tags: []
     };
   }
@@ -161,6 +162,9 @@
   function stepOptionHTML() {
     const catOpts = categories.map(function (c) {
       return '<option value="' + esc(c.id) + '"' + (form.categoryId === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+    }).join('');
+    const groupOpts = groups.map(function (g) {
+      return '<option value="' + esc(g.id) + '"' + (form.groupId === g.id ? ' selected' : '') + '>' + esc(g.name) + '</option>';
     }).join('');
     const currOpts = ['PLN','EUR','USD','GBP','CHF','CZK','SEK','NOK','DKK','HUF','UAH'].map(function (c) {
       return '<option value="' + c + '"' + (form.currency === c ? ' selected' : '') + '>' + c + '</option>';
@@ -227,6 +231,7 @@
       +       '<div class="field"><label class="label" for="pf-store">Store</label><input class="input" id="pf-store" value="' + esc(form.storeName) + '" placeholder="Store name"></div>'
       +       '<div class="field"><label class="label" for="pf-availability">Availability</label><input class="input" id="pf-availability" value="' + esc(form.availability) + '" placeholder="In stock, pre-order…"></div>'
       +       '<div class="field"><label class="label" for="pf-tags">Tags</label><input class="input" id="pf-tags" value="' + esc(form.tags.join(', ')) + '" placeholder="comma separated"></div>'
+      +       '<div class="field"><label class="label" for="pf-group">Wspólna grupa</label><select class="select" id="pf-group"><option value="">Brak (tylko Ty)</option>' + groupOpts + '</select></div>'
       +     '</div>'
       +   '</div>'
       + '</section>'
@@ -444,7 +449,7 @@
       if (el.tagName === 'SELECT') el.addEventListener('change', handler);
     }
     v('pf-name','name'); v('pf-url2','url'); v('pf-price','currentPrice'); v('pf-original','originalPrice');
-    v('pf-currency','currency'); v('pf-status','status'); v('pf-category','categoryId');
+    v('pf-currency','currency'); v('pf-status','status'); v('pf-category','categoryId'); v('pf-group','groupId');
     v('pf-store','storeName'); v('pf-availability','availability');
     v('pf-description','description'); v('pf-notes','notes');
   }
@@ -516,6 +521,7 @@
     form.currency = document.getElementById('pf-currency').value;
     form.status = document.getElementById('pf-status').value;
     form.categoryId = document.getElementById('pf-category').value;
+    form.groupId = document.getElementById('pf-group').value;
     form.storeName = document.getElementById('pf-store').value.trim();
     form.availability = document.getElementById('pf-availability').value.trim();
     form.description = document.getElementById('pf-description').value.trim();
@@ -539,6 +545,7 @@
       availability: form.availability || null,
       status: form.status,
       categoryId: form.categoryId,
+      groupId: form.groupId || null,
       notes: form.notes || null,
       storeName: form.storeName || null,
       storeDomain: form.storeDomain || null,
@@ -578,11 +585,13 @@
     const body = document.getElementById('pfBody');
     if (body) body.innerHTML = '<div class="muted small">Loading…</div>';
     try {
-      const [cats, sets] = await Promise.all([
+      const [cats, sets, grps] = await Promise.all([
         api('/api/categories', { method: 'GET' }),
-        api('/api/settings', { method: 'GET' })
+        api('/api/settings', { method: 'GET' }),
+        api('/api/category-groups', { method: 'GET' })
       ]);
       categories = (cats.categories || cats || []);
+      groups = (grps.groups || grps || []);
       if (sets.settings) settings = sets.settings;
       form.currency = settings.currency || 'PLN';
       form.categoryId = (categories.find(function (c){ return c.slug === 'other'; }) || categories[0] || {}).id || '';
@@ -636,12 +645,14 @@
     const body = document.getElementById('pfBody');
     if (body) body.innerHTML = '<div class="muted small">Loading…</div>';
     try {
-      const [cats, sets, prod] = await Promise.all([
+      const [cats, sets, grps, prod] = await Promise.all([
         api('/api/categories', { method: 'GET' }),
         api('/api/settings', { method: 'GET' }),
+        api('/api/category-groups', { method: 'GET' }),
         api('/api/products/' + id, { method: 'GET' })
       ]);
       categories = (cats.categories || cats || []);
+      groups = (grps.groups || grps || []);
       if (sets.settings) settings = sets.settings;
       const p = prod.product || prod;
       form.url = p.url || '';
@@ -658,6 +669,7 @@
       form.storeName = (p.store && p.store.name) || '';
       form.storeDomain = (p.store && p.store.domain) || '';
       form.categoryId = (p.category && p.category.id) || '';
+      form.groupId = p.groupId || '';
       form.tags = Array.isArray(p.tags) ? p.tags.slice() : [];
     } catch (e) {
       toast('Could not load product.', 'error');
@@ -1044,4 +1056,9 @@
       );
     }
   });
+
+  // Expose api for inline scripts (e.g. groups.php) that load before this bundle.
+  window.api = api;
+  window.toast = toast;
+  window.openConfirm = openConfirm;
 })();

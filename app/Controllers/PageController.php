@@ -11,6 +11,7 @@ use App\Core\Response;
 use App\Core\Str;
 use App\Core\View;
 use App\Middleware\AuthMiddleware;
+use App\Repositories\CategoryGroupRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\DashboardRepository;
 use App\Repositories\InvitationRepository;
@@ -27,6 +28,7 @@ final class PageController extends Controller
 {
     private ProductRepository $products;
     private CategoryRepository $categories;
+    private CategoryGroupRepository $groups;
     private TagRepository $tags;
     private SettingsRepository $settings;
 
@@ -35,6 +37,7 @@ final class PageController extends Controller
         parent::__construct($request);
         $this->products = new ProductRepository();
         $this->categories = new CategoryRepository();
+        $this->groups = new CategoryGroupRepository();
         $this->tags = new TagRepository();
         $this->settings = new SettingsRepository();
     }
@@ -159,6 +162,41 @@ final class PageController extends Controller
             'categories' => array_map([Serializer::class, 'category'], $this->categories->listForUser((string) $user['id'])),
             'settings' => Serializer::settings($settingsRow),
         ]);
+    }
+
+    public function groups(): Response
+    {
+        if ($redirect = AuthMiddleware::requirePageUser($this->request)) {
+            return $redirect;
+        }
+        $user = Auth::user();
+        $settingsRow = $this->settings->ensureForUser((string) $user['id']);
+
+        return View::render('groups', [
+            'title' => 'Groups · Gift Vault',
+            'activeNav' => 'groups',
+            'groups' => array_map([$this, 'serializeGroupForView'], $this->groups->listForUser((string) $user['id'])),
+            'settings' => Serializer::settings($settingsRow),
+        ]);
+    }
+
+    private function serializeGroupForView(array $row): array
+    {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'ownerId' => $row['ownerId'] !== null ? (string) $row['ownerId'] : null,
+            'ownerUsername' => (string) ($row['ownerUsername'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+            'slug' => (string) ($row['slug'] ?? ''),
+            'color' => (string) ($row['color'] ?? '#D9A3B0'),
+            'icon' => (string) ($row['icon'] ?? 'Users'),
+            'createdAt' => Str::isoFromMs($row['createdAt'] ?? null),
+            'updatedAt' => Str::isoFromMs($row['updatedAt'] ?? null),
+            'memberCount' => (int) ($row['memberCount'] ?? 0),
+            'productCount' => (int) ($row['productCount'] ?? 0),
+            'memberRole' => (string) ($row['memberRole'] ?? 'VIEWER'),
+            'isOwner' => isset($row['isOwner']) ? (bool) $row['isOwner'] : false,
+        ];
     }
 
     public function settings(): Response

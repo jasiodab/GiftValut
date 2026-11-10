@@ -58,6 +58,9 @@ $databaseStatus = 'connected';
         <a class="nav-item <?= is_nav_active($activeNav, 'categories') ? 'active' : '' ?>" href="<?= e(url('/categories')) ?>">
           <?= icon('tags') ?><span>Categories</span>
         </a>
+        <a class="nav-item <?= is_nav_active($activeNav, 'groups') ? 'active' : '' ?>" href="<?= e(url('/groups')) ?>">
+          <?= icon('users') ?><span>Groups</span>
+        </a>
         <div class="collection-card">
           <div class="collection-card-top"><?= icon('folder-heart') ?></div>
           <div class="collection-card-value">
@@ -125,6 +128,7 @@ $databaseStatus = 'connected';
     <a class="bottom-nav-item <?= is_nav_active($activeNav, 'products') ? 'active' : '' ?>" href="<?= e(url('/products')) ?>"><?= icon('shopping-bag') ?><span>Products</span></a>
     <button class="bottom-nav-add" type="button" id="quickAddBtn2" aria-label="Quick add product"><span><?= icon('plus') ?></span><span>Add</span></button>
     <a class="bottom-nav-item <?= is_nav_active($activeNav, 'categories') ? 'active' : '' ?>" href="<?= e(url('/categories')) ?>"><?= icon('tags') ?><span>Categories</span></a>
+    <a class="bottom-nav-item <?= is_nav_active($activeNav, 'groups') ? 'active' : '' ?>" href="<?= e(url('/groups')) ?>"><?= icon('users') ?><span>Groups</span></a>
     <a class="bottom-nav-item <?= is_nav_active($activeNav, 'settings') ? 'active' : '' ?>" href="<?= e(url('/settings')) ?>"><?= icon('settings') ?><span>Settings</span></a>
   </div>
 </div>
