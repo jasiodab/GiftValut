@@ -8,6 +8,7 @@ use App\Core\App;
 use App\Core\HttpException;
 use App\Repositories\CategoryGroupRepository;
 use App\Repositories\CategoryRepository;
+use App\Repositories\PriceHistoryRepository;
 use App\Repositories\ProductRepository;
 use App\Repositories\SettingsRepository;
 use App\Repositories\StoreRepository;
@@ -90,6 +91,12 @@ final class ProductService
         $imagePath = $this->assertOwnedImage($userId, self::normalizeImagePath($input['imagePath'] ?? null));
 
         $id = App::db()->transaction(function () use ($userId, $input, $normalized, $category, $store, $tags, $imagePath, $groupId): string {
+            $currentPrice = isset($input['currentPrice']) && $input['currentPrice'] !== null
+                ? Money::round((float) $input['currentPrice'])
+                : null;
+            $originalPrice = isset($input['originalPrice']) && $input['originalPrice'] !== null
+                ? Money::round((float) $input['originalPrice'])
+                : null;
             $id = $this->products->create([
                 'userId' => $userId,
                 'name' => trim((string) $input['name']),
@@ -98,12 +105,8 @@ final class ProductService
                 'description' => self::cleanOptional($input['description'] ?? null),
                 'imagePath' => $imagePath,
                 'imageSourceUrl' => self::cleanOptional($input['imageSourceUrl'] ?? null),
-                'currentPrice' => isset($input['currentPrice']) && $input['currentPrice'] !== null
-                    ? Money::round((float) $input['currentPrice'])
-                    : null,
-                'originalPrice' => isset($input['originalPrice']) && $input['originalPrice'] !== null
-                    ? Money::round((float) $input['originalPrice'])
-                    : null,
+                'currentPrice' => $currentPrice,
+                'originalPrice' => $originalPrice,
                 'currency' => (string) ($input['currency'] ?? 'PLN'),
                 'availability' => self::cleanOptional($input['availability'] ?? null),
                 'status' => (string) ($input['status'] ?? 'TO_CONSIDER'),
@@ -113,6 +116,9 @@ final class ProductService
                 'groupId' => $groupId,
             ]);
             $this->syncTags($userId, $id, $tags);
+            if ($currentPrice !== null) {
+                $this->recordPriceHistory($userId, $id, $currentPrice, $originalPrice, (string) ($input['currency'] ?? 'PLN'), self::cleanOptional($input['availability'] ?? null));
+            }
             return $id;
         });
 
@@ -164,8 +170,10 @@ final class ProductService
         if (array_key_exists('status', $input)) {
             $data['status'] = (string) $input['status'];
         }
+        $newCurrentPrice = null;
         if (array_key_exists('currentPrice', $input)) {
-            $data['currentPrice'] = $input['currentPrice'] === null ? null : Money::round((float) $input['currentPrice']);
+            $newCurrentPrice = $input['currentPrice'] === null ? null : Money::round((float) $input['currentPrice']);
+            $data['currentPrice'] = $newCurrentPrice;
         }
         if (array_key_exists('originalPrice', $input)) {
             $data['originalPrice'] = $input['originalPrice'] === null ? null : Money::round((float) $input['originalPrice']);
@@ -212,10 +220,20 @@ final class ProductService
 
         $oldImage = $existing['imagePath'] !== null ? (string) $existing['imagePath'] : null;
 
-        App::db()->transaction(function () use ($id, $userId, $data, $newTags): void {
+        App::db()->transaction(function () use ($id, $userId, $data, $newTags, $existing, $newCurrentPrice): void {
             $this->products->update($id, $userId, $data);
             if ($newTags !== null) {
                 $this->syncTags($userId, $id, $newTags);
+            }
+            if ($newCurrentPrice !== null && $newCurrentPrice !== (float) ($existing['currentPrice'] ?? 0)) {
+                $this->recordPriceHistory(
+                    $userId,
+                    $id,
+                    $newCurrentPrice,
+                    $data['originalPrice'] ?? $existing['originalPrice'],
+                    $data['currency'] ?? $existing['currency'],
+                    $data['availability'] ?? $existing['availability']
+                );
             }
         });
 
@@ -369,6 +387,24 @@ final class ProductService
         }
         $cleaned = trim((string) $value);
         return $cleaned !== '' ? $cleaned : null;
+    }
+
+    private function recordPriceHistory(string $userId, string $productId, float $price, ?float $originalPrice, string $currency, ?string $availability): void
+    {
+        App::db()->run(
+            'INSERT INTO "PriceHistory" (id, userId, productId, price, originalPrice, currency, availability, source, recordedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                Str::id(),
+                $userId,
+                $productId,
+                $price,
+                $originalPrice,
+                $currency,
+                $availability,
+                'MANUAL',
+                date('Y-m-d H:i:s'),
+            ]
+        );
     }
 
     private static function normalizeImagePath(mixed $value): ?string
