@@ -1488,8 +1488,12 @@
         ctx.fillText(label + ' ' + p.toFixed(2) + ' ' + currency, w - padding.right - 8, y - 6);
       }
 
-      drawPriceLine(currentPrice, '#2ecc71', 'Obecna:');
-      drawPriceLine(originalPrice, '#e74c3c', 'Pierwotna:');
+      // Tylko jedna linia pozioma: najpierw obecna cena, jeśli jej nie ma to pierwotna
+      if (currentPrice !== null && currentPrice !== '') {
+        drawPriceLine(currentPrice, '#e9afc5', 'Obecna:');
+      } else if (originalPrice !== null && originalPrice !== '') {
+        drawPriceLine(originalPrice, '#e9afc5', 'Cena:');
+      }
     }).catch(function (err) {
       console.error('Price chart error:', err);
       canvas.style.display = 'none';
