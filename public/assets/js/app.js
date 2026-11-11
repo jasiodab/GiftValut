@@ -1489,10 +1489,13 @@
 
       drawPriceLine(currentPrice, '#2ecc71', 'Obecna:');
       drawPriceLine(originalPrice, '#e74c3c', 'Pierwotna:');
-    }).catch(function () {
+    }).catch(function (err) {
+      console.error('Price chart error:', err);
       canvas.style.display = 'none';
-      if (empty) empty.style.display = '';
-      if (empty) empty.textContent = 'Nie można wczytać historii cen.';
+      if (empty) {
+        empty.style.display = '';
+        empty.textContent = 'Błąd wczytywania historii: ' + (err.message || String(err));
+      }
     });
   }
 
