@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Core\App;
 use App\Core\HttpException;
+use App\Core\Str;
 use App\Repositories\CategoryGroupRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\PriceHistoryRepository;

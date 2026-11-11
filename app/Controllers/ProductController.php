@@ -28,7 +28,7 @@ final class ProductController extends Controller
         $query = $this->request->query;
         $search = trim((string) ($query['search'] ?? ''));
         if (mb_strlen($search) > 200) {
-            throw $this->validationError(['search' => ['Search is too long.']]);
+            throw $this->validationError(['search' => ['Wyszukiwanie jest za długie.']]);
         }
         $status = (string) ($query['status'] ?? 'ALL');
         if (!in_array($status, ['ALL', 'TO_CONSIDER', 'FAVORITE', 'TO_BUY', 'PURCHASED'], true)) {
