@@ -141,6 +141,7 @@ $total = (int) ($pagination['total'] ?? 0);
           <span class="status <?= e($meta['class']) ?>"><span class="dot"></span><?= e($meta['label']) ?></span>
           <span class="product-row-price"><?= e(format_money($p['currentPrice'], $p['currency'])) ?></span>
           <button class="icon-btn fav-toggle <?= $isFav ? 'is-favorite' : '' ?>" type="button" data-fav="<?= e($p['id']) ?>" data-status="<?= e($p['status']) ?>" aria-label="<?= $isFav ? 'Usuń z ulubionych' : 'Dodaj do ulubionych' ?>"><?= icon('heart') ?></button>
+          <button class="btn btn-outline btn-sm cart-add" type="button" data-product-id="<?= e($p['id']) ?>" data-product-name="<?= e($p['name']) ?>"><?= icon('shopping-cart') ?> Do koszyka</button>
         </div>
       </article>
     <?php endforeach; ?>
@@ -187,6 +188,7 @@ $total = (int) ($pagination['total'] ?? 0);
             </div>
             <span class="status <?= e($meta['class']) ?>"><span class="dot"></span><?= e($meta['label']) ?></span>
           </div>
+          <button class="btn btn-outline btn-sm cart-add" type="button" data-product-id="<?= e($p['id']) ?>" data-product-name="<?= e($p['name']) ?>"><?= icon('shopping-cart') ?> Do koszyka</button>
         </div>
       </article>
     <?php endforeach; ?>

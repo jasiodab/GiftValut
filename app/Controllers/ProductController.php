@@ -110,6 +110,19 @@ final class ProductController extends Controller
         return Response::json(['deleted' => true]);
     }
 
+    public function priceHistory(string $id): Response
+    {
+        $user = AuthMiddleware::user($this->request);
+        $row = $this->service->repository()->findRowForUser($id, (string) $user['id']);
+        if ($row === null) {
+            throw new HttpException(404, 'Nie znaleziono produktu.', 'PRODUCT_NOT_FOUND');
+        }
+
+        $history = (new \App\Repositories\PriceHistoryRepository())->forProduct((string) $user['id'], $id);
+
+        return Response::json(['history' => $history]);
+    }
+
     public function bulk(): Response
     {
         $user = AuthMiddleware::user($this->request);

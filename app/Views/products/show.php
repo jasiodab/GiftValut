@@ -6,6 +6,7 @@ $meta = status_meta($p['status']);
   <a class="back-link" href="<?= e(url('/products')) ?>"><?= icon('arrow-left') ?> Produkty</a>
   <div class="detail-actions">
     <button class="btn btn-outline btn-sm" type="button" id="editProductBtn" data-id="<?= e($p['id']) ?>"><?= icon('pencil') ?> Edytuj</button>
+    <button class="btn btn-outline btn-sm cart-add" type="button" data-product-id="<?= e($p['id']) ?>" data-product-name="<?= e($p['name']) ?>"><?= icon('shopping-cart') ?> Do koszyka</button>
     <button class="btn btn-danger-ghost btn-sm" type="button" id="deleteProductBtn" data-id="<?= e($p['id']) ?>"><?= icon('trash-2') ?> Usuń</button>
   </div>
 </div>
@@ -128,6 +129,20 @@ $meta = status_meta($p['status']);
         <div class="notes-foot">
           <span class="notes-count" id="notesCount"><?= e(mb_strlen($p['notes'] ?? '')) ?> znaków</span>
           <button class="btn btn-sm" type="button" id="saveNotesBtn" data-id="<?= e($p['id']) ?>"><?= icon('save') ?> Zapisz notatki</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-head-main">
+            <h2 class="panel-title">Historia ceny</h2>
+            <p class="panel-desc">Zmiany ceny produktu w czasie.</p>
+          </div>
+        </div>
+        <div class="price-chart-wrap">
+          <canvas id="priceChart" width="600" height="300" data-product-id="<?= e($p['id']) ?>"></canvas>
+          <p class="price-chart-empty" id="priceChartEmpty" style="display:none">Brak zapisanej historii cen dla tego produktu.</p>
         </div>
       </div>
     </div>

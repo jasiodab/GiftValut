@@ -24,6 +24,7 @@ require dirname(__DIR__) . '/app/bootstrap.php';
 
 use App\Controllers\AuthController;
 use App\Controllers\CategoryController;
+use App\Controllers\CartController;
 use App\Controllers\CategoryGroupController;
 use App\Controllers\DashboardController;
 use App\Controllers\ExtractController;
@@ -120,6 +121,7 @@ $router->post('/api/products/bulk', [ProductController::class, 'bulk']);
 $router->get('/api/products/{id}', [ProductController::class, 'show']);
 $router->patch('/api/products/{id}', [ProductController::class, 'update']);
 $router->delete('/api/products/{id}', [ProductController::class, 'delete']);
+$router->get('/api/products/{id}/price-history', [ProductController::class, 'priceHistory']);
 
 $router->get('/api/categories', [CategoryController::class, 'index']);
 $router->post('/api/categories', [CategoryController::class, 'create']);
@@ -150,7 +152,14 @@ $router->get('/api/settings/backups/{filename}', [SettingsController::class, 'do
 $router->post('/api/settings/restore', [SettingsController::class, 'restore']);
 $router->get('/api/settings/info', [SettingsController::class, 'info']);
 
+$router->get('/api/cart', [CartController::class, 'index']);
+$router->post('/api/cart', [CartController::class, 'create']);
+$router->delete('/api/cart/{id}', [CartController::class, 'delete']);
+$router->delete('/api/cart', [CartController::class, 'clear']);
+
 $router->post('/api/uploads/image', [UploadController::class, 'image']);
+
+$router->get('/cart', [PageController::class, 'cart']);
 
 $path = $request->path;
 $isApi = str_starts_with($path, '/api');

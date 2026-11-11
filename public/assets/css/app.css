@@ -3588,3 +3588,112 @@ input[type="radio"] {
     display: none;
   }
 }
+
+/* ===== Koszyk ===== */
+.cart-add {
+  width: 100%;
+  margin-top: 8px;
+  justify-content: center;
+}
+
+.price-chart-wrap {
+  position: relative;
+  height: 260px;
+  margin: 8px 0 0;
+}
+
+.price-chart-wrap canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.price-chart-empty {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.cart-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--surface-bg);
+}
+
+.cart-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cart-summary span {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.cart-summary strong {
+  font-size: 1.25rem;
+  color: var(--text);
+}
+
+.cart-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.cart-qty {
+  color: var(--text-secondary);
+}
+
+.cart-total strong {
+  color: var(--text);
+}
+
+.btn-remove {
+  color: var(--danger);
+  padding: 6px;
+  line-height: 1;
+}
+
+.btn-remove:hover {
+  background: var(--danger-ghost-bg);
+}
+
+/* Licznik koszyka w nawigacji */
+.nav-item .cart-count,
+.bottom-nav-item .cart-count {
+  display: inline-block;
+  min-width: 18px;
+  height: 18px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ===== Responsive: koszyk ===== */
+@media (max-width: 640px) {
+  .cart-footer {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .cart-summary {
+    justify-content: space-between;
+  }
+
+  .price-chart-wrap {
+    height: 200px;
+  }
+}
+

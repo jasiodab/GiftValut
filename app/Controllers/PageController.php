@@ -20,6 +20,7 @@ use App\Repositories\SettingsRepository;
 use App\Repositories\TagRepository;
 use App\Repositories\UploadRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\CartRepository;
 use App\Services\BackupService;
 use App\Services\Images;
 use App\Services\Serializer;
@@ -325,5 +326,24 @@ final class PageController extends Controller
             'title' => 'Strona nie znaleziona · Gift Vault',
             'activeNav' => '',
         ], $user === null ? 'auth-layout' : 'layout');
+    }
+
+    public function cart(): Response
+    {
+        if ($redirect = AuthMiddleware::requirePageUser($this->request)) {
+            return $redirect;
+        }
+        $user = Auth::user();
+        $userId = (string) $user['id'];
+        $settingsRow = $this->settings->ensureForUser($userId);
+
+        $items = (new CartRepository())->listForUser($userId);
+
+        return View::render('cart', [
+            'title' => 'Koszyk · Gift Vault',
+            'activeNav' => 'cart',
+            'settings' => Serializer::settings($settingsRow),
+            'items' => $items,
+        ]);
     }
 }

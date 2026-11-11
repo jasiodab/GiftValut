@@ -1360,6 +1360,193 @@
     }
   });
 
+  // ---------- Koszyk ----------
+  function updateCartBadge() {
+    api('/api/cart').then(function (res) {
+      var count = (res && res.items) ? res.items.length : 0;
+      $$('.cart-count').forEach(function (el) {
+        el.textContent = count;
+        el.style.display = count > 0 ? '' : 'none';
+      });
+    }).catch(function () {
+      // ignoruj błędy badge
+    });
+  }
+
+  function renderPriceChart() {
+    var canvas = document.getElementById('priceChart');
+    var empty = document.getElementById('priceChartEmpty');
+    if (!canvas) return;
+    var productId = canvas.getAttribute('data-product-id');
+    if (!productId) return;
+
+    var ctx = canvas.getContext('2d');
+    var wrap = canvas.parentElement;
+    var dpr = window.devicePixelRatio || 1;
+    var rect = wrap.getBoundingClientRect();
+    var w = Math.max(rect.width, 300);
+    var h = Math.max(rect.height, 200);
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.scale(dpr, dpr);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+
+    api('/api/products/' + productId + '/price-history').then(function (res) {
+      var history = (res && res.history) || [];
+      if (history.length === 0) {
+        canvas.style.display = 'none';
+        if (empty) empty.style.display = '';
+        return;
+      }
+      canvas.style.display = '';
+      if (empty) empty.style.display = 'none';
+
+      var prices = history.map(function (p) { return p.price; });
+      var dates = history.map(function (p) { return p.recordedAt; });
+      var min = Math.min.apply(null, prices);
+      var max = Math.max.apply(null, prices);
+      var range = max - min || 1;
+      var pad = range * 0.2;
+      min -= pad;
+      max += pad;
+
+      var padding = { top: 24, right: 24, bottom: 30, left: 40 };
+      var plotW = w - padding.left - padding.right;
+      var plotH = h - padding.top - padding.bottom;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Oś Y i etykiety
+      ctx.font = '11px Inter, system-ui, sans-serif';
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary') || '#89838b';
+      var labels = [min, (min + max) / 2, max];
+      labels.forEach(function (val, i) {
+        var y = padding.top + plotH - ((val - min) / (max - min)) * plotH;
+        ctx.fillText(val.toFixed(2), 4, y + 4);
+        if (i < labels.length - 1) {
+          ctx.beginPath();
+          ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border-color') || '#eee9ed';
+          ctx.lineWidth = 1;
+          ctx.moveTo(padding.left, y);
+          ctx.lineTo(w - padding.right, y);
+          ctx.stroke();
+        }
+      });
+
+      // Etykiety dat na osi X
+      var step = Math.max(1, Math.floor(history.length / 4));
+      ctx.textAlign = 'center';
+      history.forEach(function (p, i) {
+        if (i % step !== 0 && i !== history.length - 1) return;
+        var x = padding.left + (i / (history.length - 1)) * plotW;
+        var d = new Date(p.recordedAt);
+        var label = d.getDate() + '.' + (d.getMonth() + 1);
+        ctx.fillText(label, x, h - 8);
+      });
+
+      // Linia ceny
+      ctx.beginPath();
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary') || '#e9afc5';
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      history.forEach(function (p, i) {
+        var x = padding.left + (i / (history.length - 1)) * plotW;
+        var y = padding.top + plotH - ((p.price - min) / (max - min)) * plotH;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Punkty
+      history.forEach(function (p, i) {
+        var x = padding.left + (i / (history.length - 1)) * plotW;
+        var y = padding.top + plotH - ((p.price - min) / (max - min)) * plotH;
+        ctx.beginPath();
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface-bg') || '#fff';
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary') || '#e9afc5';
+        ctx.lineWidth = 2;
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+    }).catch(function () {
+      canvas.style.display = 'none';
+      if (empty) empty.style.display = '';
+      if (empty) empty.textContent = 'Nie można wczytać historii cen.';
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    var addBtn = e.target.closest('.cart-add');
+    if (addBtn) {
+      e.preventDefault();
+      var productId = addBtn.getAttribute('data-product-id');
+      var productName = addBtn.getAttribute('data-product-name') || 'produkt';
+      api('/api/cart', {
+        method: 'POST',
+        body: { productId: productId }
+      }).then(function () {
+        toast('Dodano „' + productName + '” do koszyka.', 'success');
+        updateCartBadge();
+      }).catch(function (err) {
+        toast(err.message || 'Nie udało się dodać do koszyka.', 'error');
+      });
+      return;
+    }
+
+    var removeBtn = e.target.closest('.btn-remove');
+    if (removeBtn) {
+      e.preventDefault();
+      var cartId = removeBtn.getAttribute('data-cart-id');
+      api('/api/cart/' + cartId, { method: 'DELETE' }).then(function () {
+        toast('Usunięto z koszyka.', 'success');
+        updateCartBadge();
+        var row = removeBtn.closest('.product-row');
+        if (row) row.remove();
+        var remaining = document.querySelectorAll('#cartContainer .product-row').length;
+        if (remaining === 0) {
+          document.getElementById('cartContainer').innerHTML = '<div class="empty-state"><div class="empty-icon">' + iconSvg('shopping-cart') + '</div><h3>Twój koszyk jest pusty</h3><p>Dodaj produkty z listy lub kategorii.</p></div>';
+        }
+      }).catch(function (err) {
+        toast(err.message || 'Nie udało się usunąć z koszyka.', 'error');
+      });
+      return;
+    }
+
+    var clearBtn = e.target.closest('#clearCartBtn');
+    if (clearBtn) {
+      e.preventDefault();
+      openConfirm(
+        'Wyczyścić cały koszyk?',
+        'Wszystkie przedmioty zostaną usunięte. Tej operacji nie można cofnąć.',
+        function () {
+          api('/api/cart', { method: 'DELETE' }).then(function () {
+            toast('Koszyk wyczyszczony.', 'success');
+            updateCartBadge();
+            document.getElementById('cartContainer').innerHTML = '<div class="empty-state"><div class="empty-icon">' + iconSvg('shopping-cart') + '</div><h3>Twój koszyk jest pusty</h3><p>Dodaj produkty z listy lub kategorii.</p></div>';
+          }).catch(function (err) {
+            toast(err.message || 'Nie udało się wyczyścić koszyka.', 'error');
+          });
+        }
+      );
+      return;
+    }
+  });
+
+  // Inicjalizacja przy wczytywaniu strony
+  (function initPageFeatures() {
+    updateCartBadge();
+    renderPriceChart();
+
+    var goToProducts = document.getElementById('quickAddCartBtn');
+    if (goToProducts) {
+      goToProducts.addEventListener('click', function () {
+        window.location.href = '/products';
+      });
+    }
+  })();
+
   // Expose helpers for inline page scripts (np. groups.php).
   window.api = api;
   window.toast = toast;
