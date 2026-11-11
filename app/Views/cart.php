@@ -49,7 +49,7 @@ $currency = (string) ($settings['currency'] ?? 'PLN');
               <div class="product-row-name"><?= e($item['name']) ?></div>
               <div class="product-row-meta">
                 <?php if ($item['categoryName']): ?>
-                  <span class="cat-dot" style="background:<?= e($item['category']['color'] ?? '#D9A3B0') ?>"></span>
+                  <span class="cat-dot" style="background:<?= e($item['categoryColor'] ?? '#D9A3B0') ?>"></span>
                   <span><?= e($item['categoryName']) ?></span>
                   <span class="sep">·</span>
                 <?php endif; ?>

@@ -1435,11 +1435,12 @@
       });
 
       // Etykiety dat na osi X
+      var lastIndex = history.length - 1;
       var step = Math.max(1, Math.floor(history.length / 4));
       ctx.textAlign = 'center';
       history.forEach(function (p, i) {
-        if (i % step !== 0 && i !== history.length - 1) return;
-        var x = padding.left + (i / (history.length - 1)) * plotW;
+        if (i % step !== 0 && i !== lastIndex) return;
+        var x = lastIndex === 0 ? padding.left : padding.left + (i / lastIndex) * plotW;
         var d = new Date(p.recordedAt);
         var label = d.getDate() + '.' + (d.getMonth() + 1);
         ctx.fillText(label, x, h - 8);
@@ -1451,7 +1452,7 @@
       ctx.lineWidth = 2;
       ctx.lineJoin = 'round';
       history.forEach(function (p, i) {
-        var x = padding.left + (i / (history.length - 1)) * plotW;
+        var x = lastIndex === 0 ? padding.left : padding.left + (i / lastIndex) * plotW;
         var y = padding.top + plotH - ((p.price - min) / (max - min)) * plotH;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);

@@ -10,7 +10,6 @@ use App\Middleware\AuthMiddleware;
 use App\Repositories\CartRepository;
 use App\Repositories\ProductRepository;
 use App\Repositories\TagRepository;
-use App\Services\Serializer;
 
 final class CartController extends Controller
 {

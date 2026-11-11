@@ -18,7 +18,8 @@ final class CartRepository
             'SELECT c.id, c.productId, c.quantity, c.createdAt,
                     p.name, p.url, p.imagePath AS imageUrl, p.currentPrice, p.originalPrice, p.currency,
                     s.name AS storeName,
-                    cat.name AS categoryName
+                    cat.name AS categoryName,
+                    cat.color AS categoryColor
              FROM "Cart" c
              LEFT JOIN "Product" p ON p.id = c.productId AND p.userId = c.userId
              LEFT JOIN "Store" s ON s.id = p.storeId
@@ -42,6 +43,7 @@ final class CartRepository
                 'currency' => (string) ($row['currency'] ?? 'PLN'),
                 'storeName' => $row['storeName'] !== null ? (string) $row['storeName'] : null,
                 'categoryName' => $row['categoryName'] !== null ? (string) $row['categoryName'] : null,
+                'categoryColor' => $row['categoryColor'] !== null ? (string) $row['categoryColor'] : '#D9A3B0',
             ];
         }, $rows);
     }

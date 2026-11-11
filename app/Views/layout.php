@@ -56,7 +56,7 @@ $user = $user ?? null;
           <?= icon('users') ?><span>Grupy</span>
         </a>
         <a class="nav-item <?= is_nav_active($activeNav, 'cart') ? 'active' : '' ?>" href="<?= e(url('/cart')) ?>">
-          <?= icon('shopping-cart') ?><span>Koszyk</span>
+          <?= icon('shopping-cart') ?><span>Koszyk</span><span class="cart-count">0</span>
         </a>
       </nav>
 
@@ -112,7 +112,7 @@ $user = $user ?? null;
     <a class="bottom-nav-item <?= is_nav_active($activeNav, 'products') ? 'active' : '' ?>" href="<?= e(url('/products')) ?>"><?= icon('shopping-bag') ?><span>Produkty</span></a>
     <a class="bottom-nav-item <?= is_nav_active($activeNav, 'categories') ? 'active' : '' ?>" href="<?= e(url('/categories')) ?>"><?= icon('tags') ?><span>Kategorie</span></a>
     <a class="bottom-nav-item <?= is_nav_active($activeNav, 'groups') ? 'active' : '' ?>" href="<?= e(url('/groups')) ?>"><?= icon('users') ?><span>Grupy</span></a>
-    <a class="bottom-nav-item <?= is_nav_active($activeNav, 'cart') ? 'active' : '' ?>" href="<?= e(url('/cart')) ?>"><?= icon('shopping-cart') ?><span>Koszyk</span></a>
+    <a class="bottom-nav-item <?= is_nav_active($activeNav, 'cart') ? 'active' : '' ?>" href="<?= e(url('/cart')) ?>"><?= icon('shopping-cart') ?><span>Koszyk</span><span class="cart-count">0</span></a>
     <a class="bottom-nav-item <?= is_nav_active($activeNav, 'settings') ? 'active' : '' ?>" href="<?= e(url('/settings')) ?>"><?= icon('settings') ?><span>Ustawienia</span></a>
   </div>
 </nav>
