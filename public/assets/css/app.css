@@ -3697,3 +3697,34 @@ input[type="radio"] {
   }
 }
 
+/* ===== Otwórz sklep ===== */
+.store-btn {
+  width: 100%;
+  margin-top: 8px;
+  justify-content: center;
+}
+
+.store-link {
+  margin-left: 6px;
+  padding: 6px;
+  line-height: 1;
+  color: var(--primary);
+}
+
+.store-link:hover {
+  background: var(--primary-ghost-bg);
+}
+
+/* ===== Responsive: sklep ===== */
+@media (max-width: 640px) {
+  .store-btn {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .store-link {
+    margin-left: 4px;
+    padding: 5px;
+  }
+}
+
