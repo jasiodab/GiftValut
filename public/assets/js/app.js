@@ -1393,6 +1393,7 @@
       var originalPrice = canvas.getAttribute('data-original-price');
       var currency = canvas.getAttribute('data-currency') || 'PLN';
 
+      var prices = history.map(function (p) { return p.price; });
       var allPrices = prices.slice();
       if (currentPrice !== null && currentPrice !== '') allPrices.push(parseFloat(currentPrice));
       if (originalPrice !== null && originalPrice !== '') allPrices.push(parseFloat(originalPrice));
@@ -1454,7 +1455,7 @@
 
       // Punkty
       history.forEach(function (p, i) {
-        var x = padding.left + (i / (history.length - 1)) * plotW;
+        var x = lastIndex === 0 ? padding.left : padding.left + (i / lastIndex) * plotW;
         var y = padding.top + plotH - ((p.price - min) / (max - min)) * plotH;
         ctx.beginPath();
         ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface-bg') || '#fff';
