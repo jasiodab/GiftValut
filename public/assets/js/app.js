@@ -1466,33 +1466,40 @@
         ctx.stroke();
       });
 
-      // Linie poziome dla obecnej ceny i ceny pierwotnej
-      function drawPriceLine(price, color, label) {
-        if (price === null || price === '') return;
-        var p = parseFloat(price);
-        if (isNaN(p) || p <= 0) return;
-        var y = padding.top + plotH - ((p - min) / (max - min)) * plotH;
-        if (y < padding.top) y = padding.top;
-        if (y > padding.top + plotH) y = padding.top + plotH;
+      // Jedna linia łączącą cenę pierwotną z obecną
+      var cp = currentPrice !== null && currentPrice !== '' ? parseFloat(currentPrice) : null;
+      var op = originalPrice !== null && originalPrice !== '' ? parseFloat(originalPrice) : null;
+
+      function drawPriceLine(y1, y2, label1, label2, color) {
+        if (y1 === null && y2 === null) return;
+        if (y1 === null) y1 = y2;
+        if (y2 === null) y2 = y1;
+        var py1 = padding.top + plotH - ((y1 - min) / (max - min)) * plotH;
+        var py2 = padding.top + plotH - ((y2 - min) / (max - min)) * plotH;
+        if (py1 < padding.top) py1 = padding.top;
+        if (py1 > padding.top + plotH) py1 = padding.top + plotH;
+        if (py2 < padding.top) py2 = padding.top;
+        if (py2 > padding.top + plotH) py2 = padding.top + plotH;
         ctx.beginPath();
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 5]);
-        ctx.moveTo(padding.left, y);
-        ctx.lineTo(w - padding.right, y);
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.moveTo(padding.left + 20, py1);
+        ctx.lineTo(w - padding.right - 20, py2);
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.fillStyle = color;
         ctx.font = '11px Inter, system-ui, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText(label + ' ' + p.toFixed(2) + ' ' + currency, w - padding.right - 8, y - 6);
+        ctx.fillText(label1 + ' ' + y1.toFixed(2) + ' ' + currency, padding.left + 22, py1 - 8);
+        ctx.fillText(label2 + ' ' + y2.toFixed(2) + ' ' + currency, w - padding.right - 100 - ctx.measureText(label2 + ' ' + y2.toFixed(2) + ' ' + currency).width, py2 + 16);
       }
 
-      // Tylko jedna linia pozioma: najpierw obecna cena, jeśli jej nie ma to pierwotna
-      if (currentPrice !== null && currentPrice !== '') {
-        drawPriceLine(currentPrice, '#e9afc5', 'Obecna:');
-      } else if (originalPrice !== null && originalPrice !== '') {
-        drawPriceLine(originalPrice, '#e9afc5', 'Cena:');
+      if (cp !== null && op !== null) {
+        drawPriceLine(op, cp, 'Pierwotna:', 'Obecna:', '#e9afc5');
+      } else if (cp !== null) {
+        drawPriceLine(cp, cp, 'Obecna:', 'Obecna:', '#e9afc5');
+      } else if (op !== null) {
+        drawPriceLine(op, op, 'Cena:', 'Cena:', '#e9afc5');
       }
     }).catch(function (err) {
       console.error('Price chart error:', err);
