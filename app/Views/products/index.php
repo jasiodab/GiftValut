@@ -115,7 +115,11 @@ $total = (int) ($pagination['total'] ?? 0);
       $meta = status_meta($p['status']);
       ?>
       <article class="product-row" data-id="<?= e($p['id']) ?>">
-        <a class="product-row-link" href="<?= e(url('/products/' . $p['id'])) ?>" aria-label="Otwórz <?= e($p['name']) ?>"></a>
+        <?php if ($p['url']): ?>
+          <a class="product-row-link" href="<?= e($p['url']) ?>" target="_blank" rel="noopener noreferrer" aria-label="Otwórz w sklepie <?= e($p['name']) ?>"></a>
+        <?php else: ?>
+          <a class="product-row-link" href="<?= e(url('/products/' . $p['id'])) ?>" aria-label="Otwórz <?= e($p['name']) ?>"></a>
+        <?php endif; ?>
         <label class="product-row-check">
           <input class="bulk-check" type="checkbox" value="<?= e($p['id']) ?>" aria-label="Zaznacz <?= e($p['name']) ?>">
         </label>
@@ -156,7 +160,11 @@ $total = (int) ($pagination['total'] ?? 0);
       $meta = status_meta($p['status']);
       ?>
       <article class="product-card" data-id="<?= e($p['id']) ?>">
-        <a class="product-card-link" href="<?= e(url('/products/' . $p['id'])) ?>" aria-label="Otwórz <?= e($p['name']) ?>"></a>
+        <?php if ($p['url']): ?>
+          <a class="product-card-link" href="<?= e($p['url']) ?>" target="_blank" rel="noopener noreferrer" aria-label="Otwórz w sklepie <?= e($p['name']) ?>"></a>
+        <?php else: ?>
+          <a class="product-card-link" href="<?= e(url('/products/' . $p['id'])) ?>" aria-label="Otwórz <?= e($p['name']) ?>"></a>
+        <?php endif; ?>
         <div class="product-media">
           <div class="product-image">
             <?php if ($p['imageUrl']): ?>
