@@ -137,7 +137,12 @@ final class ProductController extends Controller
             $history = $priceHistory->forProduct($userId, $id);
         }
 
-        return Response::json(['history' => $history]);
+        return Response::json([
+            'history' => $history,
+            'currentPrice' => $row['currentPrice'] !== null ? (float) $row['currentPrice'] : null,
+            'originalPrice' => $row['originalPrice'] !== null ? (float) $row['originalPrice'] : null,
+            'currency' => (string) ($row['currency'] ?? 'PLN'),
+        ]);
     }
 
     public function bulk(): Response

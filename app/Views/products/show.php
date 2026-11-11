@@ -140,7 +140,7 @@ $meta = status_meta($p['status']);
           </div>
         </div>
         <div class="price-chart-wrap">
-          <canvas id="priceChart" width="600" height="300" data-product-id="<?= e($p['id']) ?>"></canvas>
+          <canvas id="priceChart" width="600" height="300" data-product-id="<?= e($p['id']) ?>" data-current-price="<?= e($p['currentPrice'] ?? '') ?>" data-original-price="<?= e($p['originalPrice'] ?? '') ?>" data-currency="<?= e($p['currency'] ?? 'PLN') ?>"></canvas>
           <p class="price-chart-empty" id="priceChartEmpty" style="display:none">Brak zapisanej historii cen dla tego produktu.</p>
         </div>
       </div>

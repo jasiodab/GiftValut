@@ -1389,16 +1389,22 @@
       canvas.style.display = '';
       if (empty) empty.style.display = 'none';
 
-      var prices = history.map(function (p) { return p.price; });
-      var dates = history.map(function (p) { return p.recordedAt; });
-      var min = Math.min.apply(null, prices);
-      var max = Math.max.apply(null, prices);
+      var currentPrice = canvas.getAttribute('data-current-price');
+      var originalPrice = canvas.getAttribute('data-original-price');
+      var currency = canvas.getAttribute('data-currency') || 'PLN';
+
+      var allPrices = prices.slice();
+      if (currentPrice !== null && currentPrice !== '') allPrices.push(parseFloat(currentPrice));
+      if (originalPrice !== null && originalPrice !== '') allPrices.push(parseFloat(originalPrice));
+      var pricesForMinMax = allPrices.length > 0 ? allPrices : prices;
+      var min = Math.min.apply(null, pricesForMinMax);
+      var max = Math.max.apply(null, pricesForMinMax);
       var range = max - min || 1;
       var pad = range * 0.2;
       min -= pad;
       max += pad;
 
-      var padding = { top: 24, right: 24, bottom: 30, left: 40 };
+      var padding = { top: 24, right: 120, bottom: 30, left: 40 };
       var plotW = w - padding.left - padding.right;
       var plotH = h - padding.top - padding.bottom;
 
@@ -1458,6 +1464,31 @@
         ctx.fill();
         ctx.stroke();
       });
+
+      // Linie poziome dla obecnej ceny i ceny pierwotnej
+      function drawPriceLine(price, color, label) {
+        if (price === null || price === '') return;
+        var p = parseFloat(price);
+        if (isNaN(p) || p <= 0) return;
+        var y = padding.top + plotH - ((p - min) / (max - min)) * plotH;
+        if (y < padding.top) y = padding.top;
+        if (y > padding.top + plotH) y = padding.top + plotH;
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5]);
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(w - padding.right, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = color;
+        ctx.font = '11px Inter, system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(label + ' ' + p.toFixed(2) + ' ' + currency, w - padding.right - 8, y - 6);
+      }
+
+      drawPriceLine(currentPrice, '#2ecc71', 'Obecna:');
+      drawPriceLine(originalPrice, '#e74c3c', 'Pierwotna:');
     }).catch(function () {
       canvas.style.display = 'none';
       if (empty) empty.style.display = '';
