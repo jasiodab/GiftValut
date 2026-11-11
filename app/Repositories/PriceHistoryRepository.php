@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Core\App;
+use App\Core\Str;
 
 final class PriceHistoryRepository
 {
@@ -32,5 +33,23 @@ final class PriceHistoryRepository
                 'recordedAt' => (string) $row['recordedAt'],
             ];
         }, $rows);
+    }
+
+    public function create(string $userId, string $productId, float $price, ?float $originalPrice, string $currency, ?string $availability, string $source = 'MANUAL'): void
+    {
+        App::db()->run(
+            'INSERT INTO "PriceHistory" (id, userId, productId, price, originalPrice, currency, availability, source, recordedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                Str::id(),
+                $userId,
+                $productId,
+                $price,
+                $originalPrice,
+                $currency,
+                $availability,
+                $source,
+                date('Y-m-d H:i:s'),
+            ]
+        );
     }
 }
