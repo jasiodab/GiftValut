@@ -142,7 +142,7 @@ $total = (int) ($pagination['total'] ?? 0);
           <span class="product-row-price"><?= e(format_money($p['currentPrice'], $p['currency'])) ?></span>
           <button class="icon-btn fav-toggle <?= $isFav ? 'is-favorite' : '' ?>" type="button" data-fav="<?= e($p['id']) ?>" data-status="<?= e($p['status']) ?>" aria-label="<?= $isFav ? 'Usuń z ulubionych' : 'Dodaj do ulubionych' ?>"><?= icon('heart') ?></button>
           <?php if ($p['url']): ?>
-            <a class="icon-btn store-link" href="<?= e($p['url']) ?>" target="_blank" rel="noopener noreferrer" aria-label="Otwórz sklep <?= e($p['store']['name'] ?? '') ?>"><?= icon('arrow-up-right') ?></a>
+            <a class="icon-btn store-link" href="<?= e(url('/products/' . $p['id'])) ?>" aria-label="Otwórz produkt <?= e($p['name']) ?>"><?= icon('arrow-up-right') ?></a>
           <?php endif; ?>
         </div>
       </article>
@@ -191,7 +191,7 @@ $total = (int) ($pagination['total'] ?? 0);
             <span class="status <?= e($meta['class']) ?>"><span class="dot"></span><?= e($meta['label']) ?></span>
           </div>
           <?php if ($p['url']): ?>
-            <a class="btn btn-outline btn-sm store-btn" href="<?= e($p['url']) ?>" target="_blank" rel="noopener noreferrer"><?= icon('arrow-up-right') ?> Otwórz sklep</a>
+            <a class="btn btn-outline btn-sm store-btn" href="<?= e(url('/products/' . $p['id'])) ?>"><?= icon('arrow-up-right') ?> Otwórz produkt</a>
           <?php endif; ?>
         </div>
       </article>
