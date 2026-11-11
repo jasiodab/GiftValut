@@ -6,7 +6,6 @@ $meta = status_meta($p['status']);
   <a class="back-link" href="<?= e(url('/products')) ?>"><?= icon('arrow-left') ?> Produkty</a>
   <div class="detail-actions">
     <button class="btn btn-outline btn-sm" type="button" id="editProductBtn" data-id="<?= e($p['id']) ?>"><?= icon('pencil') ?> Edytuj</button>
-    <button class="btn btn-outline btn-sm cart-add" type="button" data-product-id="<?= e($p['id']) ?>" data-product-name="<?= e($p['name']) ?>"><?= icon('shopping-cart') ?> Do koszyka</button>
     <button class="btn btn-danger-ghost btn-sm" type="button" id="deleteProductBtn" data-id="<?= e($p['id']) ?>"><?= icon('trash-2') ?> Usuń</button>
   </div>
 </div>

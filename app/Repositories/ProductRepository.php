@@ -199,6 +199,17 @@ final class ProductRepository
     }
 
     /**
+     * Suma aktualnych cen wszystkich produktów w grupie dla użytkownika.
+     */
+    public function sumPricesForGroup(string $userId, string $groupId): float
+    {
+        return (float) (App::db()->value(
+            'SELECT COALESCE(SUM(currentPrice), 0) FROM "Product" WHERE userId = ? AND groupId = ?',
+            [$userId, $groupId]
+        ) ?? 0);
+    }
+
+    /**
      * @param list<array<string, mixed>> $rows
      * @return list<array<string, mixed>>
      */

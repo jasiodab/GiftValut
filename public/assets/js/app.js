@@ -1360,19 +1360,6 @@
     }
   });
 
-  // ---------- Koszyk ----------
-  function updateCartBadge() {
-    api('/api/cart').then(function (res) {
-      var count = (res && res.items) ? res.items.length : 0;
-      $$('.cart-count').forEach(function (el) {
-        el.textContent = count;
-        el.style.display = count > 0 ? '' : 'none';
-      });
-    }).catch(function () {
-      // ignoruj błędy badge
-    });
-  }
-
   function renderPriceChart() {
     var canvas = document.getElementById('priceChart');
     var empty = document.getElementById('priceChartEmpty');
@@ -1479,73 +1466,11 @@
   }
 
   document.addEventListener('click', function (e) {
-    var addBtn = e.target.closest('.cart-add');
-    if (addBtn) {
-      e.preventDefault();
-      var productId = addBtn.getAttribute('data-product-id');
-      var productName = addBtn.getAttribute('data-product-name') || 'produkt';
-      api('/api/cart', {
-        method: 'POST',
-        body: { productId: productId }
-      }).then(function () {
-        toast('Dodano „' + productName + '” do koszyka.', 'success');
-        updateCartBadge();
-      }).catch(function (err) {
-        toast(err.message || 'Nie udało się dodać do koszyka.', 'error');
-      });
-      return;
-    }
-
-    var removeBtn = e.target.closest('.btn-remove');
-    if (removeBtn) {
-      e.preventDefault();
-      var cartId = removeBtn.getAttribute('data-cart-id');
-      api('/api/cart/' + cartId, { method: 'DELETE' }).then(function () {
-        toast('Usunięto z koszyka.', 'success');
-        updateCartBadge();
-        var row = removeBtn.closest('.product-row');
-        if (row) row.remove();
-        var remaining = document.querySelectorAll('#cartContainer .product-row').length;
-        if (remaining === 0) {
-          document.getElementById('cartContainer').innerHTML = '<div class="empty-state"><div class="empty-icon">' + iconSvg('shopping-cart') + '</div><h3>Twój koszyk jest pusty</h3><p>Dodaj produkty z listy lub kategorii.</p></div>';
-        }
-      }).catch(function (err) {
-        toast(err.message || 'Nie udało się usunąć z koszyka.', 'error');
-      });
-      return;
-    }
-
-    var clearBtn = e.target.closest('#clearCartBtn');
-    if (clearBtn) {
-      e.preventDefault();
-      openConfirm(
-        'Wyczyścić cały koszyk?',
-        'Wszystkie przedmioty zostaną usunięte. Tej operacji nie można cofnąć.',
-        function () {
-          api('/api/cart', { method: 'DELETE' }).then(function () {
-            toast('Koszyk wyczyszczony.', 'success');
-            updateCartBadge();
-            document.getElementById('cartContainer').innerHTML = '<div class="empty-state"><div class="empty-icon">' + iconSvg('shopping-cart') + '</div><h3>Twój koszyk jest pusty</h3><p>Dodaj produkty z listy lub kategorii.</p></div>';
-          }).catch(function (err) {
-            toast(err.message || 'Nie udało się wyczyścić koszyka.', 'error');
-          });
-        }
-      );
-      return;
-    }
   });
 
   // Inicjalizacja przy wczytywaniu strony
   (function initPageFeatures() {
-    updateCartBadge();
     renderPriceChart();
-
-    var goToProducts = document.getElementById('quickAddCartBtn');
-    if (goToProducts) {
-      goToProducts.addEventListener('click', function () {
-        window.location.href = '/products';
-      });
-    }
   })();
 
   // Expose helpers for inline page scripts (np. groups.php).

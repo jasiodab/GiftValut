@@ -52,6 +52,8 @@ $roleLabels = [
             <span class="sep">·</span>
             <span><?= e($g['productCount']) ?> <?= e(plural_pl((int) $g['productCount'], 'produkt', 'produkty', 'produktów')) ?></span>
             <span class="sep">·</span>
+            <span><?= e(format_money($g['priceSum'], 'PLN')) ?> wartość</span>
+            <span class="sep">·</span>
             <span>Twoja rola: <?= e($roleLabels[$g['memberRole']] ?? $g['memberRole']) ?></span>
           </div>
         </div>

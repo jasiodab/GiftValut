@@ -174,12 +174,20 @@ final class PageController extends Controller
             return $redirect;
         }
         $user = Auth::user();
-        $settingsRow = $this->settings->ensureForUser((string) $user['id']);
+        $userId = (string) $user['id'];
+        $settingsRow = $this->settings->ensureForUser($userId);
+
+        $groups = [];
+        foreach ($this->groups->listForUser($userId) as $row) {
+            $group = $this->serializeGroupForView($row);
+            $group['priceSum'] = $this->products->sumPricesForGroup($userId, (string) $row['id']);
+            $groups[] = $group;
+        }
 
         return View::render('groups', [
             'title' => 'Grupy · Gift Vault',
             'activeNav' => 'groups',
-            'groups' => array_map([$this, 'serializeGroupForView'], $this->groups->listForUser((string) $user['id'])),
+            'groups' => $groups,
             'settings' => Serializer::settings($settingsRow),
         ]);
     }
