@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Auth;
+use App\Core\Flash;
 use App\Core\HttpException;
 use App\Core\Response;
 use App\Core\Str;
 use App\Core\Validator;
+use App\Core\View;
 use App\Middleware\AuthMiddleware;
+use App\Middleware\CsrfMiddleware;
 use App\Repositories\CategoryGroupInvitationRepository;
 use App\Repositories\CategoryGroupRepository;
 use App\Repositories\UserRepository;
@@ -192,7 +196,6 @@ final class CategoryGroupController extends Controller
 
         $input = $this->jsonInput();
         $validator = new Validator($input);
-        $email = $validator->email('email', 'E-mail', true);
         $role = $validator->enum('role', [
             CategoryGroupRepository::ROLE_VIEWER,
             CategoryGroupRepository::ROLE_EDITOR,
@@ -201,30 +204,15 @@ final class CategoryGroupController extends Controller
         ], 'Rola', CategoryGroupRepository::ROLE_CONTRIBUTOR);
         $validator->throwIfFails();
 
-        // Check if user already exists and is already a member.
-        $existingUser = $this->users->findByEmail($email);
-        if ($existingUser !== null && $this->groups->findMember($id, (string) $existingUser['id']) !== null) {
-            throw new HttpException(409, 'Ta osoba jest już członkiem grupy.', 'ALREADY_MEMBER');
-        }
-
-        // Check for existing pending invitation.
-        $existingInvites = $this->invitations->listForGroup($id);
-        foreach ($existingInvites as $inv) {
-            if ((string) $inv['email'] === $email && (string) $inv['role'] === $role) {
-                throw new HttpException(409, 'Zaproszenie dla tego adresu e-mail już istnieje.', 'INVITATION_EXISTS');
-            }
-        }
-
         $token = Str::token(32);
         $expiresAt = Str::nowMs() + (7 * 86400000); // 7 days
-        $invitation = $this->invitations->create($id, $email, Str::hashToken($token), $role, $userId, $expiresAt);
+        $invitation = $this->invitations->create($id, Str::hashToken($token), $role, $userId, $expiresAt);
 
-        $link = \App\Core\App::config('app.url', '') . '/api/category-group-invitations/accept/' . rawurlencode($token);
+        $link = \App\Core\App::config('app.url', '') . '/invite-group/' . rawurlencode($token);
 
         return Response::json([
             'invitation' => [
                 'id' => (string) $invitation['id'],
-                'email' => (string) $invitation['email'],
                 'role' => (string) $invitation['role'],
                 'link' => $link,
                 'expiresAt' => Str::isoFromMs($invitation['expiresAt'] ?? null),
@@ -308,7 +296,6 @@ final class CategoryGroupController extends Controller
             'invitations' => array_map(function (array $inv) use ($userId) {
                 return [
                     'id' => (string) $inv['id'],
-                    'email' => (string) $inv['email'],
                     'role' => (string) $inv['role'],
                     'expiresAt' => Str::isoFromMs($inv['expiresAt'] ?? null),
                     'usedAt' => $inv['usedAt'] !== null ? Str::isoFromMs($inv['usedAt']) : null,
@@ -345,7 +332,7 @@ final class CategoryGroupController extends Controller
             throw new HttpException(404, 'Zaproszenie nie znalezione.', 'INVITATION_NOT_FOUND');
         }
 
-        if (!$this->invitations->revoke($invitationId)) {
+        if (!$this->invitations->revoke($invitationId, $id)) {
             throw new HttpException(400, 'Nie można odwołać tego zaproszenia.', 'CANNOT_REVOKE');
         }
 
@@ -389,6 +376,96 @@ final class CategoryGroupController extends Controller
             'message' => 'Dołączono do grupy.',
             'group' => $this->serializeGroup($group ?? []),
         ]);
+    }
+
+    // ---- Server-rendered group invitation page (join / decline via link) ----
+
+    public function showGroupInvite(string $token): Response
+    {
+        $invitation = $this->invitations->findByTokenHash(Str::hashToken($token));
+        $valid = $invitation !== null
+            && $invitation['revokedAt'] === null
+            && $invitation['usedAt'] === null
+            && (int) ($invitation['expiresAt'] ?? 0) >= Str::nowMs();
+
+        if (!$valid) {
+            return View::render('auth/group-invite', [
+                'title' => 'Zaproszenie do grupy · Gift Vault',
+                'layout' => 'auth-layout',
+                'token' => $token,
+                'valid' => false,
+            ], 'auth-layout');
+        }
+
+        $group = $this->groups->findById((string) $invitation['groupId']);
+        if ($group === null) {
+            throw new HttpException(404, 'Grupa nie znaleziona.', 'GROUP_NOT_FOUND');
+        }
+
+        $user = Auth::user();
+        if ($user === null) {
+            return AuthMiddleware::requirePageUser($this->request);
+        }
+
+        $userId = (string) $user['id'];
+        $alreadyMember = $this->groups->findMember((string) $invitation['groupId'], $userId) !== null;
+
+        return View::render('auth/group-invite', [
+            'title' => 'Dołącz do grupy · Gift Vault',
+            'layout' => 'auth-layout',
+            'token' => $token,
+            'valid' => true,
+            'alreadyMember' => $alreadyMember,
+            'group' => $group,
+            'invitation' => $invitation,
+            'user' => $user,
+        ], 'auth-layout');
+    }
+
+    public function acceptGroupInviteForm(string $token): Response
+    {
+        CsrfMiddleware::enforce($this->request);
+        $user = AuthMiddleware::user($this->request);
+        $userId = (string) $user['id'];
+
+        $invitation = $this->invitations->findByTokenHash(Str::hashToken($token));
+        if ($invitation === null
+            || $invitation['revokedAt'] !== null
+            || $invitation['usedAt'] !== null
+            || (int) ($invitation['expiresAt'] ?? 0) < Str::nowMs()) {
+            Flash::error('Zaproszenie jest nieprawidłowe lub wygasło.');
+            return Response::redirect(url('invite-group/' . rawurlencode($token)));
+        }
+
+        $groupId = (string) $invitation['groupId'];
+        $group = $this->groups->findById($groupId);
+
+        if ($this->groups->findMember($groupId, $userId) === null) {
+            $this->groups->addMember($groupId, $userId, (string) $invitation['role'], (string) $invitation['invitedById']);
+        }
+        $this->invitations->consume((string) $invitation['id'], $userId);
+
+        Flash::success('Dołączono do grupy „' . e((string) ($group['name'] ?? '')) . '”.');
+        return Response::redirect(url('/groups'));
+    }
+
+    public function declineGroupInviteForm(string $token): Response
+    {
+        CsrfMiddleware::enforce($this->request);
+        AuthMiddleware::user($this->request);
+
+        $invitation = $this->invitations->findByTokenHash(Str::hashToken($token));
+        if ($invitation === null
+            || $invitation['revokedAt'] !== null
+            || $invitation['usedAt'] !== null
+            || (int) ($invitation['expiresAt'] ?? 0) < Str::nowMs()) {
+            Flash::error('Zaproszenie jest nieprawidłowe lub wygasło.');
+            return Response::redirect(url('invite-group/' . rawurlencode($token)));
+        }
+
+        $this->invitations->revoke((string) $invitation['id']);
+        Flash::info('Odrzucono zaproszenie do grupy.');
+        return Response::redirect(url('/groups'));
     }
 
     private function serializeGroup(array $row): array

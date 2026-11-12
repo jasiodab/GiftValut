@@ -56,7 +56,7 @@ final class Csrf
                 setcookie(self::COOKIE, $guest, [
                     'expires' => time() + 86400,
                     'path' => '/',
-                    'secure' => $request->isSecure(),
+                    'secure' => self::cookieSecure($request),
                     'httponly' => true,
                     'samesite' => 'Lax',
                 ]);
@@ -70,5 +70,17 @@ final class Csrf
     {
         $secret = (string) App::config('security.secret');
         return Str::base64Url(hash_hmac('sha256', $context, $secret, true));
+    }
+
+    private static function cookieSecure(Request $request): bool
+    {
+        $mode = (string) App::config('security.cookie_secure', 'auto');
+        if ($mode === 'true' || $mode === '1') {
+            return true;
+        }
+        if ($mode === 'false' || $mode === '0') {
+            return false;
+        }
+        return $request->isSecure();
     }
 }

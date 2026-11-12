@@ -14,7 +14,11 @@ final class RateLimitMiddleware
 {
     public static function login(Request $request): void
     {
-        self::hit('login', 'ip:' . $request->ip, (array) App::config('limits.login'));
+        // Different devices behind the same NAT/IP (shared Wi-Fi) must not
+        // share one login bucket. Add the user agent so each device/desktop
+        // has its own limit instead of one shared bucket per IP address.
+        $identity = 'ip:' . $request->ip . '|ua:' . ($request->header('user-agent') ?? 'unknown');
+        self::hit('login', $identity, (array) App::config('limits.login'));
     }
 
     public static function bootstrap(Request $request): void

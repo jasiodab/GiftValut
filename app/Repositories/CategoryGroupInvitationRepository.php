@@ -9,13 +9,13 @@ use App\Core\Str;
 
 final class CategoryGroupInvitationRepository
 {
-    public function create(string $groupId, string $email, string $tokenHash, string $role, string $invitedById, int $expiresAt): array
+    public function create(string $groupId, string $tokenHash, string $role, string $invitedById, int $expiresAt): array
     {
         $id = Str::id();
         App::db()->run(
-            'INSERT INTO "CategoryGroupInvitation" (id, groupId, email, tokenHash, role, invitedById, expiresAt, createdAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [$id, $groupId, $email, $tokenHash, $role, $invitedById, $expiresAt, Str::nowMs()]
+            'INSERT INTO "CategoryGroupInvitation" (id, groupId, tokenHash, role, invitedById, expiresAt, createdAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [$id, $groupId, $tokenHash, $role, $invitedById, $expiresAt, Str::nowMs()]
         );
         return App::db()->fetch('SELECT * FROM "CategoryGroupInvitation" WHERE id = ?', [$id]) ?? [];
     }
@@ -36,8 +36,14 @@ final class CategoryGroupInvitationRepository
         );
     }
 
-    public function revoke(string $id): bool
+    public function revoke(string $id, ?string $groupId = null): bool
     {
+        if ($groupId !== null) {
+            return App::db()->execute(
+                'UPDATE "CategoryGroupInvitation" SET revokedAt = ? WHERE id = ? AND groupId = ? AND revokedAt IS NULL AND usedAt IS NULL',
+                [Str::nowMs(), $id, $groupId]
+            ) > 0;
+        }
         return App::db()->execute(
             'UPDATE "CategoryGroupInvitation" SET revokedAt = ? WHERE id = ? AND revokedAt IS NULL AND usedAt IS NULL',
             [Str::nowMs(), $id]

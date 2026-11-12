@@ -335,16 +335,23 @@ $roleLabels = [
       var box = document.getElementById('mmBody');
       var html = '';
 
-      html += '<div class="form-section-title">Zaproś osobę</div>';
+      html += '<div class="form-section-title">Zaproś osobę linkiem</div>';
       html += '<div class="form-grid">';
-      html += '<div class="field"><label class="label" for="inviteEmail">Adres e-mail</label><input class="input" id="inviteEmail" type="email" placeholder="osoba@przyklad.com"></div>';
       html += '<div class="field"><label class="label" for="inviteRole">Rola</label><select class="select" id="inviteRole">';
       ROLE_OPTIONS.forEach(function (role) {
         html += '<option value="' + role.value + '"' + (role.value === 'CONTRIBUTOR' ? ' selected' : '') + '>' + role.label + '</option>';
       });
       html += '</select></div>';
       html += '</div>';
-      html += '<div class="settings-actions"><button class="btn btn-sm" type="button" id="inviteSendBtn">' + iconSvg('send') + ' Wyślij zaproszenie</button></div>';
+      html += '<div class="settings-actions"><button class="btn btn-sm" type="button" id="inviteCreateBtn">' + iconSvg('link') + ' Utwórz link zaproszenia</button></div>';
+      html += '<div class="field mt-3" id="inviteLinkBox" style="display:none">';
+      html += '<label class="label">Link zaproszenia</label>';
+      html += '<div style="display:flex;gap:8px">';
+      html += '<input class="input" id="inviteLinkValue" type="text" readonly style="flex:1">';
+      html += '<button class="btn btn-sm" type="button" id="inviteCopyBtn">' + iconSvg('copy') + ' Kopiuj</button>';
+      html += '</div>';
+      html += '<p class="hint">Wyślij ten link do wybranej osoby. Po jego otwarciu będzie mogła dołączyć do grupy lub odrzucić zaproszenie.</p>';
+      html += '</div>';
 
       html += '<div class="form-section"><div class="form-section-title">Członkowie</div>';
       if (members.length === 0) {
@@ -382,14 +389,14 @@ $roleLabels = [
       if (invitations.length === 0) {
         html += '<div class="empty-state compact"><p class="empty-desc">Brak oczekujących zaproszeń.</p></div>';
       } else {
-        html += '<div class="table-responsive"><table class="table"><thead><tr><th>E-mail</th><th>Rola</th><th>Wygasa</th><th class="table-actions">Akcje</th></tr></thead><tbody>';
+        html += '<div class="table-responsive"><table class="table"><thead><tr><th>Utworzone</th><th>Rola</th><th>Wygasa</th><th class="table-actions">Akcje</th></tr></thead><tbody>';
         invitations.forEach(function (invitation) {
           var badge = '';
           if (invitation.isUsed) badge = ' <span class="badge badge-success">Wykorzystane</span>';
           else if (invitation.isRevoked) badge = ' <span class="badge badge-danger">Odwołane</span>';
           else badge = ' <span class="badge badge-muted">Oczekuje</span>';
           html += '<tr>';
-          html += '<td><strong>' + esc(invitation.email) + '</strong>' + badge + '</td>';
+          html += '<td>' + esc(fmtDate(invitation.createdAt)) + badge + '</td>';
           html += '<td>' + esc(ROLE_LABELS[invitation.role] || invitation.role) + '</td>';
           html += '<td>' + esc(fmtDate(invitation.expiresAt)) + '</td>';
           html += '<td class="table-actions">';
@@ -405,26 +412,43 @@ $roleLabels = [
 
       box.innerHTML = html;
 
-      var inviteBtn = document.getElementById('inviteSendBtn');
+      var inviteBtn = document.getElementById('inviteCreateBtn');
       if (inviteBtn) {
         inviteBtn.addEventListener('click', async function () {
-          var emailInput = document.getElementById('inviteEmail');
           var roleSelect = document.getElementById('inviteRole');
-          if (!emailInput || !emailInput.value.trim()) {
-            toast('Podaj adres e-mail.', 'error');
-            return;
-          }
           try {
-            await api('/api/category-groups/' + managingGroupId + '/invitations', {
+            var res = await api('/api/category-groups/' + managingGroupId + '/invitations', {
               method: 'POST',
-              body: { email: emailInput.value.trim(), role: roleSelect.value }
+              body: { role: roleSelect.value }
             });
-            toast('Zaproszenie wysłane.', 'success');
-            emailInput.value = '';
-            openManageMembersModal(managingGroupId);
+            var inv = res.invitation || {};
+            if (inv.link) {
+              var linkBox = document.getElementById('inviteLinkBox');
+              var linkValue = document.getElementById('inviteLinkValue');
+              if (linkBox && linkValue) {
+                linkValue.value = inv.link.startsWith('http') ? inv.link : (window.location.origin + inv.link);
+                linkBox.style.display = 'block';
+              }
+            }
+            toast('Link zaproszenia utworzony.', 'success');
           } catch (err) {
-            toast(err.message || 'Nie można wysłać zaproszenia.', 'error');
+            toast(err.message || 'Nie można utworzyć linku zaproszenia.', 'error');
           }
+        });
+      }
+
+      var copyBtn = document.getElementById('inviteCopyBtn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function () {
+          var linkValue = document.getElementById('inviteLinkValue');
+          if (!linkValue) return;
+          linkValue.select();
+          try {
+            navigator.clipboard.writeText(linkValue.value);
+          } catch (err) {
+            document.execCommand('copy');
+          }
+          toast('Link skopiowany do schowka.', 'success');
         });
       }
 

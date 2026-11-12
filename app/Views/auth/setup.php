@@ -16,11 +16,31 @@
       <label class="label" for="email">E-mail</label>
       <input class="input" id="email" name="email" type="email" autocomplete="email" required>
     </div>
-    <div class="field">
+    <div class="field password-toggle">
       <label class="label" for="password">Hasło</label>
       <input class="input" id="password" name="password" type="password" minlength="12" autocomplete="new-password" required>
       <span class="hint">Co najmniej 12 znaków.</span>
+      <button class="btn-icon toggle-password" type="button" aria-label="Pokaż/ukryj hasło" title="Pokaż/ukryj hasło"><?= icon('eye') ?></button>
     </div>
     <button class="btn btn-block" type="submit">Utwórz kolekcję</button>
   </form>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    'use strict';
+    document.querySelectorAll('.toggle-password').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var field = btn.closest('.password-toggle');
+        if (!field) return;
+        var input = field.querySelector('input');
+        if (!input) return;
+        var showing = input.getAttribute('type') === 'text';
+        input.setAttribute('type', showing ? 'password' : 'text');
+        btn.innerHTML = showing ? '<?= icon('eye') ?>' : '<?= icon('eye-off') ?>';
+        btn.setAttribute('aria-pressed', showing ? 'false' : 'true');
+        btn.setAttribute('title', showing ? 'Pokaż hasło' : 'Ukryj hasło');
+      });
+    });
+  });
+</script>

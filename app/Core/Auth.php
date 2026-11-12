@@ -179,7 +179,7 @@ final class Auth
         self::clearSessionCookie($request);
     }
 
-    public static function revokeAllSessions(string $userId): void
+    public static function revokeAllSessions(Request $request, string $userId): void
     {
         App::db()->execute(
             'UPDATE "Session" SET revokedAt = ? WHERE userId = ? AND revokedAt IS NULL',
@@ -188,6 +188,7 @@ final class Auth
         self::$user = null;
         self::$token = null;
         self::$resolved = true;
+        self::clearSessionCookie($request);
     }
 
     public static function hashPassword(string $password): string

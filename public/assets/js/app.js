@@ -431,15 +431,29 @@
     var imageBox = document.getElementById('pf-imageBox');
     if (imageBox && !imageBox.dataset.dndBound) {
       imageBox.dataset.dndBound = '1';
+      imageBox.addEventListener('dragenter', function (e) { e.preventDefault(); imageBox.classList.add('drag-over'); });
       imageBox.addEventListener('dragover', function (e) { e.preventDefault(); imageBox.classList.add('drag-over'); });
       imageBox.addEventListener('dragleave', function () { imageBox.classList.remove('drag-over'); });
       imageBox.addEventListener('drop', function (e) {
         e.preventDefault();
         imageBox.classList.remove('drag-over');
-        var files = e.dataTransfer && e.dataTransfer.files;
-        if (files && files.length) handleImageUpload(files[0]);
+        var dt = e.dataTransfer;
+        var file = null;
+        if (dt && dt.files && dt.files.length) {
+          file = dt.files[0];
+        } else if (dt && dt.items && dt.items.length) {
+          var item = dt.items[0];
+          if (item.kind === 'file' && item.getAsFile) {
+            file = item.getAsFile();
+          }
+        }
+        if (file) handleImageUpload(file);
       });
     }
+
+    // Zapobiegaj otwieraniu przeciąganego pliku przez przeglądarkę zamiast jego upuszczenia w aplikacji.
+    document.addEventListener('dragover', function (e) { e.preventDefault(); }, false);
+    document.addEventListener('drop', function (e) { e.preventDefault(); }, false);
 
     bindFormFields();
   }

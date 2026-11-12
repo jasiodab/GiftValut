@@ -116,7 +116,7 @@ final class AuthController extends Controller
         }
 
         $this->users->updatePassword((string) $user['id'], Auth::hashPassword($new));
-        Auth::revokeAllSessions((string) $user['id']);
+        Auth::revokeAllSessions($this->request, (string) $user['id']);
         return Response::json(['ok' => true]);
     }
 

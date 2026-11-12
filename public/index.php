@@ -58,14 +58,20 @@ try {
     exit;
 }
 
+$request = Request::capture();
+$isApi = str_starts_with($request->path, '/api');
+
 try {
-    $request = Request::capture();
-} catch (HttpException $error) {
-    http_response_code($error->status);
-    header('Content-Type: application/json; charset=utf-8');
-    echo \App\Core\Str::jsonEncode([
-        'error' => ['code' => $error->errorCode, 'message' => $error->getMessage()],
-    ]);
+    App::ensureSchema();
+} catch (Throwable $error) {
+    if ($isApi || $request->wantsJson()) {
+        Response::error(500, 'DATABASE_ERROR', $error->getMessage())->send();
+        exit;
+    }
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Gift Vault could not open its database.' . PHP_EOL;
+    echo $error->getMessage() . PHP_EOL;
     exit;
 }
 
@@ -89,6 +95,9 @@ $router->get('/setup', [AuthController::class, 'showSetup']);
 $router->post('/setup', [AuthController::class, 'setupForm']);
 $router->get('/invite/{token}', [AuthController::class, 'showInvite']);
 $router->post('/invite/{token}', [AuthController::class, 'inviteForm']);
+$router->get('/invite-group/{token}', [CategoryGroupController::class, 'showGroupInvite']);
+$router->post('/invite-group/{token}/accept', [CategoryGroupController::class, 'acceptGroupInviteForm']);
+$router->post('/invite-group/{token}/decline', [CategoryGroupController::class, 'declineGroupInviteForm']);
 $router->get('/uploads/{filename}', [PageController::class, 'upload']);
 
 // Public API.
@@ -161,7 +170,6 @@ $router->post('/api/uploads/image', [UploadController::class, 'image']);
 
 
 $path = $request->path;
-$isApi = str_starts_with($path, '/api');
 
 try {
     if ($maintenance = MaintenanceMiddleware::guard($request)) {
@@ -169,9 +177,12 @@ try {
         exit;
     }
 
-    // CSRF is not required for same-origin API auth endpoints (they rely on session cookies).
-    // HTML forms (login, invite, settings) still carry a _csrf field via csrf_field().
-    if (!$isApi || !str_starts_with($path, '/api/auth')) {
+    // CSRF is required for all state-changing requests (POST/PUT/PATCH/DELETE).
+    // Session cookies are sent automatically, so without CSRF an attacker could
+    // force password changes, logouts, group invitations, etc. via a malicious site.
+    // /api/auth/login is the only public endpoint that stays CSRF-free.
+    $isStateChanging = in_array($request->method, ['POST', 'PUT', 'PATCH', 'DELETE'], true);
+    if ($isStateChanging && $path !== '/api/auth/login') {
         CsrfMiddleware::enforce($request);
     }
 

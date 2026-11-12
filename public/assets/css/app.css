@@ -3728,3 +3728,41 @@ input[type="radio"] {
   }
 }
 
+/* ---------- Password toggle ---------------------------------------------- */
+.password-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.password-toggle .input {
+  flex: 1;
+  border-right-radius: 0;
+}
+
+.toggle-password {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-left: 0;
+  border-top-right-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.toggle-password:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.toggle-password .icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
