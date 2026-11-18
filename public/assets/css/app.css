@@ -3718,6 +3718,13 @@ input[type="radio"] {
 }
 
 /* ===== Otwórz sklep ===== */
+/* Akcje sklepu muszą leżeć nad nakładką otwierającą kartę produktu. */
+.store-btn,
+.store-link {
+  position: relative;
+  z-index: 2;
+}
+
 .store-btn {
   width: 100%;
   margin-top: 8px;
