@@ -37,10 +37,15 @@ $int = static function (string $key, int $default) use ($env): int {
 
 $dataDir = rtrim((string) $env('GV_DATA_DIR', $root . DIRECTORY_SEPARATOR . 'data'), '/\\');
 
+$databasePath = (string) $env('GV_DB_PATH', $env('DB_PATH', $dataDir . '/gift-vault.sqlite'));
+if ($databasePath !== '' && !preg_match('~^(?:[/\\\\]|[A-Za-z]:[/\\\\])~', $databasePath)) {
+    $databasePath = $root . DIRECTORY_SEPARATOR . ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $databasePath), DIRECTORY_SEPARATOR);
+}
+
 return [
     'app' => [
-        'name' => 'Gift Vault',
-        'version' => '2.0.0',
+        'name' => (string) $env('APP_NAME', 'Gift Vault'),
+        'version' => (string) $env('APP_VERSION', '2.0.0'),
         'env' => (string) $env('APP_ENV', 'production'),
         'debug' => $bool('APP_DEBUG', false),
         'frog_mode' => $bool('FROG_MODE', false),
@@ -53,7 +58,7 @@ return [
         'views' => $root . '/app/Views',
         'migrations' => $root . '/migrations',
         'data' => $dataDir,
-        'database' => (string) $env('GV_DB_PATH', $dataDir . '/gift-vault.sqlite'),
+        'database' => $databasePath,
         'uploads' => $dataDir . '/uploads',
         'backups' => $dataDir . '/backups',
         'rate_limits' => $dataDir . '/rate-limits',
@@ -71,8 +76,8 @@ return [
         'trust_proxy_headers' => $bool('TRUST_PROXY_HEADERS', true),
     ],
     'uploads' => [
-        'max_bytes' => 2 * 1024 * 1024,
-        'remote_max_bytes' => 2 * 1024 * 1024,
+        'max_bytes' => max(1, $int('UPLOAD_MAX_BYTES', 2 * 1024 * 1024)),
+        'remote_max_bytes' => max(1, $int('UPLOAD_MAX_BYTES', 2 * 1024 * 1024)),
         'allowed_mime' => [
             'image/jpeg',
             'image/png',
@@ -88,8 +93,8 @@ return [
         'max_image_bytes' => 20 * 1024 * 1024,
     ],
     'limits' => [
-        'login' => ['window' => 60, 'max' => 10],
-        'bootstrap' => ['window' => 3600, 'max' => 3],
+        'login' => ['window' => 60, 'max' => max(1, $int('RATE_LIMIT_LOGIN', 10))],
+        'bootstrap' => ['window' => 3600, 'max' => max(1, $int('RATE_LIMIT_BOOTSTRAP', 3))],
         'extract' => ['window' => 900, 'max' => 10],
         'api' => ['window' => 900, 'max' => 240],
     ],
