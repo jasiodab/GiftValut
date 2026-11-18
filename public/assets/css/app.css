@@ -3776,3 +3776,8 @@ img {
   max-height: 90vh;
 }
 
+/* Zdjęcia produktów w siatce — górny limit wysokości */
+.product-image img {
+  max-height: 700px;
+}
+
