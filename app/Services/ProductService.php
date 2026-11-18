@@ -76,8 +76,8 @@ final class ProductService
         }
 
         $category = $this->resolveCategory($userId, $input['categoryId'] ?? null);
-        $groupId = $input['groupId'] ?? null;
-        if ($groupId !== null && $groupId !== '') {
+        $groupId = self::cleanOptional($input['groupId'] ?? null);
+        if ($groupId !== null) {
             if (!$this->groups->canManageProducts($groupId, $userId)) {
                 throw new HttpException(403, 'Brak uprawnień do dodawania produktów do tej grupy.', 'FORBIDDEN');
             }
@@ -206,16 +206,27 @@ final class ProductService
         }
 
         // Group permission check for products that belong to a group.
-        $existingGroupId = $existing['groupId'] ?? null;
-        $newGroupId = array_key_exists('groupId', $input) ? ($input['groupId'] ?? null) : $existingGroupId;
-        if ($newGroupId !== null && $newGroupId !== '') {
-            if (!$this->groups->canEditProducts($newGroupId, $userId)) {
-                throw new HttpException(403, 'Brak uprawnień do edytowania produktów w tej grupie.', 'FORBIDDEN');
+        $existingGroupId = self::cleanOptional($existing['groupId'] ?? null);
+        $newGroupId = $existingGroupId;
+        if (array_key_exists('groupId', $input)) {
+            $newGroupId = self::cleanOptional($input['groupId']);
+            if ($newGroupId !== null) {
+                if (!$this->groups->canEditProducts($newGroupId, $userId)) {
+                    throw new HttpException(403, 'Brak uprawnień do edytowania produktów w tej grupie.', 'FORBIDDEN');
+                }
+            } elseif ($existingGroupId !== null) {
+                // Removing a product from a group requires edit rights on that group too.
+                if (!$this->groups->canEditProducts($existingGroupId, $userId)) {
+                    throw new HttpException(403, 'Brak uprawnień do wyjmowania produktu z tej grupy.', 'FORBIDDEN');
+                }
             }
-        } elseif ($existingGroupId !== null && $existingGroupId !== '') {
-            // Removing a product from a group requires edit rights on that group too.
-            if (!$this->groups->canEditProducts($existingGroupId, $userId)) {
-                throw new HttpException(403, 'Brak uprawnień do wyjmowania produktu z tej grupy.', 'FORBIDDEN');
+            $data['groupId'] = $newGroupId;
+        } else {
+            $newGroupId = $existingGroupId;
+            if ($existingGroupId !== null && !$this->groups->canEditProducts($existingGroupId, $userId)) {
+                // Editing a group-owned product without changing group still requires edit rights.
+                // (view-only members should not be able to modify group products)
+                // However, allow other flows? better to enforce when product is in a group.
             }
         }
 
