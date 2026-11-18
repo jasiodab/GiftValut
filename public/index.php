@@ -70,15 +70,15 @@ $renderFatalPage = static function (int $status, string $title, string $message)
         . 'h1{margin:0 0 10px;font-size:24px;line-height:1.2}p{margin:0 0 18px;color:#5b555b;line-height:1.5}'
         . 'a{display:inline-block;padding:10px 14px;border-radius:10px;background:#e9afc5;color:#252329;text-decoration:none;font-weight:600}'
         . '@media(prefers-color-scheme:dark){body{background:#161417;color:#f2eef0}.card{background:#211e22;border-color:#332e33}.eyebrow{color:#e9afc5}p{color:#b7afb4}}</style>'
-        . '</head><body><main class="card"><div class="eyebrow">Błąd ' . $safeStatus . '</div><h1>' . $safeTitle . '</h1>'
-        . '<p>' . $safeMessage . '</p><a href="/">Wróć na stronę główną</a></main></body></html>';
+        . '</head><body><main class="card"><div class="eyebrow">BĹ‚Ä…d ' . $safeStatus . '</div><h1>' . $safeTitle . '</h1>'
+        . '<p>' . $safeMessage . '</p><a href="/">WrĂłÄ‡ na stronÄ™ gĹ‚ĂłwnÄ…</a></main></body></html>';
 };
 
 try {
     App::ensureSchema();
 } catch (Throwable $error) {
     $debug = (bool) App::config('app.debug', false);
-    $publicMessage = $debug ? $error->getMessage() : 'Nie można otworzyć lokalnej bazy danych Gift Vault. Spróbuj ponownie za chwilę.';
+    $publicMessage = $debug ? $error->getMessage() : 'Nie moĹĽna otworzyÄ‡ lokalnej bazy danych Gift Vault. SprĂłbuj ponownie za chwilÄ™.';
     error_log('[Gift Vault] Schema/init error: ' . $error->getMessage() . ' in ' . $error->getFile() . ':' . $error->getLine());
 
     if ($isApi || $request->wantsJson()) {
@@ -86,7 +86,7 @@ try {
         exit;
     }
 
-    $renderFatalPage(503, 'Błąd połączenia z bazą danych', $publicMessage);
+    $renderFatalPage(503, 'BĹ‚Ä…d poĹ‚Ä…czenia z bazÄ… danych', $publicMessage);
     exit;
 }
 
@@ -239,16 +239,16 @@ try {
     $status = $error->status;
     $view = $status === 404 ? 'errors/404' : 'errors/error';
     $title = match ($status) {
-        403 => 'Brak dost�pu',
+        403 => 'Brak dostępu',
         404 => 'Nie znaleziono strony',
         503 => 'Chwilowa przerwa',
-        default => 'Wyst�pi� b��d',
+        default => 'Wystąpił błąd',
     };
     $defaultMessage = match ($status) {
-        403 => 'Nie masz uprawnie� do wy�wietlenia tej strony.',
-        404 => 'Strona, kt�rej szukasz, nie istnieje.',
-        503 => 'Gift Vault jest chwilowo niedost�pny. Spr�buj ponownie za moment.',
-        default => 'Wyst�pi� nieoczekiwany b��d. Spr�buj ponownie.',
+        403 => 'Nie masz uprawnień do wyświetlenia tej strony.',
+        404 => 'Strona, której szukasz, nie istnieje.',
+        503 => 'Gift Vault jest chwilowo niedostępny. Spróbuj ponownie za moment.',
+        default => 'Wystąpił nieoczekiwany błąd. Spróbuj ponownie.',
     };
     $message = trim($error->getMessage()) !== '' ? $error->getMessage() : $defaultMessage;
 
@@ -261,7 +261,7 @@ try {
 
     try {
         $html = View::render($view, [
-            'title' => $title . ' � Gift Vault',
+            'title' => $title . ' · Gift Vault',
             'activeNav' => '',
             'status' => $status,
             'message' => $message,
@@ -275,7 +275,7 @@ try {
 } catch (Throwable $error) {
     error_log('[Gift Vault] ' . $error->getMessage() . ' in ' . $error->getFile() . ':' . $error->getLine());
     $debug = (bool) App::config('app.debug', false);
-    $message = $debug ? $error->getMessage() : 'Wyst�pi� nieoczekiwany b��d. Spr�buj ponownie.';
+    $message = $debug ? $error->getMessage() : 'Wystąpił nieoczekiwany błąd. Spróbuj ponownie.';
 
     if ($isApi || $request->wantsJson()) {
         Response::error(500, 'INTERNAL_ERROR', $message)->send();
@@ -291,7 +291,7 @@ try {
 
     try {
         $html = View::render('errors/error', [
-            'title' => 'Wyst�pi� b��d � Gift Vault',
+            'title' => 'Wystąpił błąd · Gift Vault',
             'activeNav' => '',
             'status' => 500,
             'message' => $message,
@@ -300,6 +300,6 @@ try {
         $html->send();
     } catch (Throwable $renderError) {
         error_log('[Gift Vault] Fatal view render failed: ' . $renderError->getMessage());
-        $renderFatalPage(500, 'Wyst�pi� b��d', $message);
+        $renderFatalPage(500, 'Wystąpił błąd', $message);
     }
 }
