@@ -207,7 +207,6 @@ final class ProductService
 
         // Group permission check for products that belong to a group.
         $existingGroupId = self::cleanOptional($existing['groupId'] ?? null);
-        $newGroupId = $existingGroupId;
         if (array_key_exists('groupId', $input)) {
             $newGroupId = self::cleanOptional($input['groupId']);
             if ($newGroupId !== null) {
@@ -221,13 +220,8 @@ final class ProductService
                 }
             }
             $data['groupId'] = $newGroupId;
-        } else {
-            $newGroupId = $existingGroupId;
-            if ($existingGroupId !== null && !$this->groups->canEditProducts($existingGroupId, $userId)) {
-                // Editing a group-owned product without changing group still requires edit rights.
-                // (view-only members should not be able to modify group products)
-                // However, allow other flows? better to enforce when product is in a group.
-            }
+        } elseif ($existingGroupId !== null && !$this->groups->canEditProducts($existingGroupId, $userId)) {
+            throw new HttpException(403, 'Brak uprawnień do edytowania produktów w tej grupie.', 'FORBIDDEN');
         }
 
         $oldImage = $existing['imagePath'] !== null ? (string) $existing['imagePath'] : null;
