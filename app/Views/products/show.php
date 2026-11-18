@@ -77,10 +77,12 @@ $meta = status_meta($p['status']);
         </div>
       </div>
       <div class="detail-rows">
-        <div class="detail-row">
-          <div class="detail-row-label"><?= icon('link') ?> Link</div>
-          <div class="detail-row-value"><a href="<?= e($p['url']) ?>" target="_blank" rel="noreferrer noopener">Otwórz w sklepie <?= icon('arrow-up-right') ?></a></div>
-        </div>
+        <?php if (!empty($p['url'])): ?>
+          <div class="detail-row">
+            <div class="detail-row-label"><?= icon('link') ?> Link</div>
+            <div class="detail-row-value"><a href="<?= e($p['url']) ?>" target="_blank" rel="noreferrer noopener">Otwórz w sklepie <?= icon('arrow-up-right') ?></a></div>
+          </div>
+        <?php endif; ?>
         <div class="detail-row">
           <div class="detail-row-label"><?= icon('tag') ?> Kategoria</div>
           <div class="detail-row-value"><?= e($p['category']['name'] ?? '—') ?></div>
