@@ -44,38 +44,51 @@ use App\Middleware\CsrfMiddleware;
 use App\Middleware\MaintenanceMiddleware;
 use App\Middleware\RateLimitMiddleware;
 
-try {
-    App::ensureSchema();
-} catch (Throwable $error) {
-    if ($isApi || $request->wantsJson()) {
-        Response::error(500, 'DATABASE_ERROR', $error->getMessage())->send();
-        exit;
-    }
-    http_response_code(500);
-    header('Content-Type: text/plain; charset=utf-8');
-    echo 'Gift Vault could not open its database.' . PHP_EOL;
-    echo $error->getMessage() . PHP_EOL;
-    exit;
-}
-
 $request = Request::capture();
-$isApi = str_starts_with($request->path, '/api');
+App::setRequest($request);
+$isApi = str_starts_with($request->path, '/api/');
+
+/**
+ * Render a minimal, dependency-free HTML error page.
+ * Used as a last resort when the normal view/layout pipeline is unavailable.
+ */
+$renderFatalPage = static function (int $status, string $title, string $message): void {
+    http_response_code($status);
+    if (!headers_sent()) {
+        header('Content-Type: text/html; charset=utf-8');
+        header('Cache-Control: no-store');
+        header('X-Content-Type-Options: nosniff');
+    }
+    $safeTitle = htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $safeMessage = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $safeStatus = (string) $status;
+    echo '<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+        . '<title>' . $safeTitle . '</title>'
+        . '<style>body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f6f4f5;color:#252329;min-height:100vh;display:grid;place-items:center;padding:24px}'
+        . '.card{max-width:520px;width:100%;background:#fff;border:1px solid #e6e0e3;border-radius:16px;padding:28px;box-shadow:0 8px 30px rgba(0,0,0,.06)}'
+        . '.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b5b72;margin-bottom:8px;font-weight:600}'
+        . 'h1{margin:0 0 10px;font-size:24px;line-height:1.2}p{margin:0 0 18px;color:#5b555b;line-height:1.5}'
+        . 'a{display:inline-block;padding:10px 14px;border-radius:10px;background:#e9afc5;color:#252329;text-decoration:none;font-weight:600}'
+        . '@media(prefers-color-scheme:dark){body{background:#161417;color:#f2eef0}.card{background:#211e22;border-color:#332e33}.eyebrow{color:#e9afc5}p{color:#b7afb4}}</style>'
+        . '</head><body><main class="card"><div class="eyebrow">BÅ‚Ä…d ' . $safeStatus . '</div><h1>' . $safeTitle . '</h1>'
+        . '<p>' . $safeMessage . '</p><a href="/">WrÃ³Ä‡ na stronÄ™ gÅ‚Ã³wnÄ…</a></main></body></html>';
+};
 
 try {
     App::ensureSchema();
 } catch (Throwable $error) {
+    $debug = (bool) App::config('app.debug', false);
+    $publicMessage = $debug ? $error->getMessage() : 'Nie moÅ¼na otworzyÄ‡ lokalnej bazy danych Gift Vault. SprÃ³buj ponownie za chwilÄ™.';
+    error_log('[Gift Vault] Schema/init error: ' . $error->getMessage() . ' in ' . $error->getFile() . ':' . $error->getLine());
+
     if ($isApi || $request->wantsJson()) {
-        Response::error(500, 'DATABASE_ERROR', $error->getMessage())->send();
+        Response::error(503, 'DB_UNAVAILABLE', $publicMessage)->send();
         exit;
     }
-    http_response_code(500);
-    header('Content-Type: text/plain; charset=utf-8');
-    echo 'Gift Vault could not open its database.' . PHP_EOL;
-    echo $error->getMessage() . PHP_EOL;
+
+    $renderFatalPage(503, 'BÅ‚Ä…d poÅ‚Ä…czenia z bazÄ… danych', $publicMessage);
     exit;
 }
-
-App::setRequest($request);
 
 // Register routes.
 $router = new Router($request);
@@ -218,44 +231,75 @@ try {
     }
 
     if ($error->status === 401) {
-        Response::redirect(url('login?next=' . rawurlencode($request->path)))->send();
+        $next = $request->path . ($request->query !== [] ? ('?' . http_build_query($request->query)) : '');
+        Response::redirect(url('login?next=' . rawurlencode($next)))->send();
         exit;
     }
 
-    $view = $error->status === 404 ? 'errors/404' : 'errors/error';
-    $layout = Auth::user() === null ? 'auth-layout' : 'layout';
+    $status = $error->status;
+    $view = $status === 404 ? 'errors/404' : 'errors/error';
+    $title = match ($status) {
+        403 => 'Brak dostêpu',
+        404 => 'Nie znaleziono strony',
+        503 => 'Chwilowa przerwa',
+        default => 'Wyst¹pi³ b³¹d',
+    };
+    $defaultMessage = match ($status) {
+        403 => 'Nie masz uprawnieñ do wyœwietlenia tej strony.',
+        404 => 'Strona, której szukasz, nie istnieje.',
+        503 => 'Gift Vault jest chwilowo niedostêpny. Spróbuj ponownie za moment.',
+        default => 'Wyst¹pi³ nieoczekiwany b³¹d. Spróbuj ponownie.',
+    };
+    $message = trim($error->getMessage()) !== '' ? $error->getMessage() : $defaultMessage;
+
+    $layout = 'auth-layout';
+    try {
+        $layout = Auth::user() === null ? 'auth-layout' : 'layout';
+    } catch (Throwable) {
+        $layout = 'auth-layout';
+    }
+
     try {
         $html = View::render($view, [
-            'title' => ($error->status === 404 ? 'Page not found' : 'Something went wrong') . ' Â· Gift Vault',
+            'title' => $title . ' · Gift Vault',
             'activeNav' => '',
-            'status' => $error->status,
-            'message' => $error->getMessage(),
+            'status' => $status,
+            'message' => $message,
         ], $layout);
-        $html->status = $error->status;
+        $html->status = $status;
         $html->send();
     } catch (Throwable $renderError) {
-        Response::text('Gift Vault error: ' . $error->getMessage(), $error->status)->send();
+        error_log('[Gift Vault] Error view render failed: ' . $renderError->getMessage());
+        $renderFatalPage($status, $title, $message);
     }
 } catch (Throwable $error) {
     error_log('[Gift Vault] ' . $error->getMessage() . ' in ' . $error->getFile() . ':' . $error->getLine());
     $debug = (bool) App::config('app.debug', false);
-    $message = $debug ? $error->getMessage() : 'An unexpected error occurred. Please try again.';
+    $message = $debug ? $error->getMessage() : 'Wyst¹pi³ nieoczekiwany b³¹d. Spróbuj ponownie.';
 
     if ($isApi || $request->wantsJson()) {
         Response::error(500, 'INTERNAL_ERROR', $message)->send();
         exit;
     }
 
+    $layout = 'auth-layout';
+    try {
+        $layout = Auth::user() === null ? 'auth-layout' : 'layout';
+    } catch (Throwable) {
+        $layout = 'auth-layout';
+    }
+
     try {
         $html = View::render('errors/error', [
-            'title' => 'Something went wrong Â· Gift Vault',
+            'title' => 'Wyst¹pi³ b³¹d · Gift Vault',
             'activeNav' => '',
             'status' => 500,
             'message' => $message,
-        ], Auth::user() === null ? 'auth-layout' : 'layout');
+        ], $layout);
         $html->status = 500;
         $html->send();
     } catch (Throwable $renderError) {
-        Response::text('Gift Vault error: ' . $message, 500)->send();
+        error_log('[Gift Vault] Fatal view render failed: ' . $renderError->getMessage());
+        $renderFatalPage(500, 'Wyst¹pi³ b³¹d', $message);
     }
 }
