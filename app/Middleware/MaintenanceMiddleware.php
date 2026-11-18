@@ -21,7 +21,7 @@ final class MaintenanceMiddleware
         }
         throw new HttpException(
             503,
-            'Gift Vault is being restored from a backup. Please refresh in a moment.',
+            'Gift Vault jest przywracany z kopii zapasowej. Odśwież stronę za chwilę.',
             'MAINTENANCE'
         );
     }
