@@ -17,6 +17,7 @@ final class Auth
     private static ?array $user = null;
     private static ?string $token = null;
     private static bool $cleanupAttempted = false;
+    private static ?string $dummyHash = null;
 
     public static function rawToken(Request $request): ?string
     {
@@ -221,6 +222,21 @@ final class Auth
             'UPDATE "User" SET passwordHash = ?, updatedAt = ? WHERE id = ?',
             [self::hashPassword($password), Str::nowMs(), $userId]
         );
+    }
+
+    /**
+     * Return a stable dummy hash for timing-equalization on failed logins.
+     */
+    public static function dummyHash(): string
+    {
+        if (self::$dummyHash !== null) {
+            return self::$dummyHash;
+        }
+        $hash = password_hash('gift-vault-dummy-password', PASSWORD_BCRYPT, [
+            'cost' => (int) App::config('security.bcrypt_cost', 12),
+        ]);
+        self::$dummyHash = is_string($hash) && $hash !== '' ? $hash : '$2y$12$aaaaaaaaaaaaaaaaaaaaaOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+        return self::$dummyHash;
     }
 
     public static function cleanupExpiredSessions(): void

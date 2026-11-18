@@ -12,7 +12,7 @@
     <input type="hidden" name="next" value="<?= e($next ?? '') ?>">
     <div class="field">
       <label class="label" for="username">Nazwa użytkownika lub e-mail</label>
-      <input class="input" id="username" name="username" type="text" autocomplete="username" required autofocus>
+      <input class="input" id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
     </div>
     <div class="field password-toggle">
       <label class="label" for="password">Hasło</label>

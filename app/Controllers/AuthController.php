@@ -73,7 +73,11 @@ final class AuthController extends Controller
         $validator->throwIfFails();
 
         $user = $this->users->findByLogin($login);
-        if ($user === null || ($user['status'] ?? '') !== 'ACTIVE' || !Auth::verifyPassword($password, (string) $user['passwordHash'])) {
+        if ($user === null) {
+            Auth::verifyPassword($password, Auth::dummyHash());
+            throw new HttpException(401, 'Nieprawidłowa nazwa użytkownika lub hasło.', 'INVALID_CREDENTIALS');
+        }
+        if (($user['status'] ?? '') !== 'ACTIVE' || !Auth::verifyPassword($password, (string) $user['passwordHash'])) {
             throw new HttpException(401, 'Nieprawidłowa nazwa użytkownika lub hasło.', 'INVALID_CREDENTIALS');
         }
 
@@ -254,13 +258,13 @@ final class AuthController extends Controller
 
     public function showLogin(): Response
     {
+        $next = $this->safeNext((string) $this->request->query('next', ''));
         if (Auth::user() !== null) {
-            return Response::redirect(url('/'));
+            return Response::redirect(url($next !== '' ? $next : '/'));
         }
-        $next = (string) $this->request->query('next', '');
         return View::render('auth/login', [
             'title' => 'Zaloguj się · Gift Vault',
-            'next' => $this->safeNext($next),
+            'next' => $next,
             'needsSetup' => $this->users->ownerCount() === 0,
             'layout' => 'auth-layout',
         ], 'auth-layout');
@@ -276,7 +280,12 @@ final class AuthController extends Controller
         $next = $this->safeNext((string) $this->request->input('next', ''));
 
         $user = $this->users->findByLogin($login);
-        if ($user === null || ($user['status'] ?? '') !== 'ACTIVE' || !Auth::verifyPassword($password, (string) $user['passwordHash'])) {
+        if ($user === null) {
+            Auth::verifyPassword($password, Auth::dummyHash());
+            Flash::error('Nieprawidłowa nazwa użytkownika lub hasło.');
+            return Response::redirect(url('login' . ($next !== '' ? '?next=' . rawurlencode($next) : '')));
+        }
+        if (($user['status'] ?? '') !== 'ACTIVE' || !Auth::verifyPassword($password, (string) $user['passwordHash'])) {
             Flash::error('Nieprawidłowa nazwa użytkownika lub hasło.');
             return Response::redirect(url('login' . ($next !== '' ? '?next=' . rawurlencode($next) : '')));
         }

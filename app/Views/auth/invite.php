@@ -12,11 +12,11 @@
       <input type="hidden" name="token" value="<?= e($token) ?>">
       <div class="field">
         <label class="label" for="username">Nazwa użytkownika</label>
-        <input class="input" id="username" name="username" type="text" minlength="3" maxlength="40" autocomplete="username" required>
+        <input class="input" id="username" name="username" type="text" minlength="3" maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" required>
       </div>
       <div class="field">
         <label class="label" for="email">E-mail</label>
-        <input class="input" id="email" name="email" type="email" autocomplete="email" required>
+        <input class="input" id="email" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required>
       </div>
       <div class="field password-toggle">
         <label class="label" for="password">Hasło</label>
