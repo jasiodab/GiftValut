@@ -275,7 +275,7 @@
 
   function imagePreviewHTML() {
     if (form.imagePath) {
-      return '<img src="' + esc(productImageUrl(form.imagePath)) + '" alt="Podgląd zdjęcia" style="width:100%;height:100%;object-fit:cover">';
+      return '<img src="' + esc(productImageUrl(form.imagePath)) + '" alt="Podgląd zdjęcia">';
     }
     return '<div class="product-image-empty">' + iconSvg('image') + '<span>Brak zdjęcia</span></div>';
   }
