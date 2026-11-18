@@ -38,7 +38,10 @@ final class CategoryGroupController extends Controller
         $rows = $this->groups->listForUser($userId);
 
         return Response::json([
-            'groups' => array_map([$this, 'serializeGroup'], $rows),
+            'groups' => array_map(function (array $row) use ($userId): array {
+                $row['isOwner'] = (string) ($row['ownerId'] ?? '') === $userId;
+                return $this->serializeGroup($row);
+            }, $rows),
         ]);
     }
 
@@ -125,7 +128,7 @@ final class CategoryGroupController extends Controller
         }
         $validator->throwIfFails();
 
-        $this->groups->update($id, $userId, $data);
+        $this->groups->update($id, $data);
         $updated = $this->groups->findForUser($id, $userId) ?? [];
         $updated['memberCount'] = $this->groups->memberCount($id);
         $updated['productCount'] = $this->groups->productCount($id);
@@ -371,10 +374,13 @@ final class CategoryGroupController extends Controller
         $this->groups->addMember($groupId, $userId, $role, (string) $invitation['invitedById']);
         $this->invitations->consume($invitation['id'], $userId);
 
-        $group = $this->groups->findForUser($groupId, $userId);
+        $group = $this->groups->findForUser($groupId, $userId) ?? [];
+        $group['isOwner'] = (string) ($group['ownerId'] ?? '') === $userId;
+        $group['memberCount'] = $this->groups->memberCount($groupId);
+        $group['productCount'] = $this->groups->productCount($groupId);
         return Response::json([
             'message' => 'Dołączono do grupy.',
-            'group' => $this->serializeGroup($group ?? []),
+            'group' => $this->serializeGroup($group),
         ]);
     }
 

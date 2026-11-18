@@ -35,7 +35,9 @@ final class CategoryGroupRepository
             'SELECT g.*,
                     m.role AS memberRole,
                     m.joinedAt AS memberJoinedAt,
-                    u.username AS ownerUsername
+                    u.username AS ownerUsername,
+                    (SELECT COUNT(*) FROM "CategoryGroupMember" gm WHERE gm.groupId = g.id) AS memberCount,
+                    (SELECT COUNT(*) FROM "Product" p WHERE p.groupId = g.id) AS productCount
              FROM "CategoryGroup" g
              INNER JOIN "CategoryGroupMember" m ON m.groupId = g.id AND m.userId = ?
              LEFT JOIN "User" u ON u.id = g.ownerId
@@ -100,7 +102,7 @@ final class CategoryGroupRepository
         return $this->findForUser($id, $ownerId) ?? [];
     }
 
-    public function update(string $id, string $userId, array $data): void
+    public function update(string $id, array $data): void
     {
         $allowed = ['name', 'color', 'icon'];
         $sets = [];
@@ -117,8 +119,7 @@ final class CategoryGroupRepository
         $sets[] = '"updatedAt" = ?';
         $params[] = Str::nowMs();
         $params[] = $id;
-        $params[] = $userId;
-        App::db()->execute('UPDATE "CategoryGroup" SET ' . implode(', ', $sets) . ' WHERE id = ? AND ownerId = ?', $params);
+        App::db()->execute('UPDATE "CategoryGroup" SET ' . implode(', ', $sets) . ' WHERE id = ?', $params);
     }
 
     public function delete(string $id, string $ownerId): bool

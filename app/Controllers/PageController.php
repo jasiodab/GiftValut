@@ -178,6 +178,7 @@ final class PageController extends Controller
 
         $groups = [];
         foreach ($this->groups->listForUser($userId) as $row) {
+            $row['isOwner'] = (string) ($row['ownerId'] ?? '') === $userId;
             $group = $this->serializeGroupForView($row);
             $group['priceSum'] = $this->products->sumPricesForGroup($userId, (string) $row['id']);
             $groups[] = $group;
