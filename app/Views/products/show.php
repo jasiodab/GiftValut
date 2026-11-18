@@ -65,7 +65,7 @@ $meta = status_meta($p['status']);
         </div>
       </div>
       <div class="url-box">
-        <a href="<?= e($p['url']) ?>" target="_blank" rel="noreferrer noopener"><?= e($p['url']) ?></a>
+        <span class="product-url" title="Adres sklepu"><?= e($p['url']) ?></span>
       </div>
     </div>
 

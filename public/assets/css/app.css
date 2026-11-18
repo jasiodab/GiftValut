@@ -1874,7 +1874,7 @@ input[type="radio"] {
   padding: 0 18px 16px;
 }
 
-.url-box a {
+.url-box .product-url {
   display: block;
   padding: 8px 10px;
   border: 1px solid var(--border);
@@ -1885,11 +1885,6 @@ input[type="radio"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: color 0.12s ease;
-}
-
-.url-box a:hover {
-  color: var(--text);
 }
 
 .detail-rows {
