@@ -451,7 +451,7 @@ final class CategoryGroupController extends Controller
         }
         $this->invitations->consume((string) $invitation['id'], $userId);
 
-        Flash::success('Dołączono do grupy „' . e((string) ($group['name'] ?? '')) . '”.');
+        Flash::success('Dołączono do grupy „' . (string) ($group['name'] ?? '') . '”.');
         return Response::redirect(url('/groups'));
     }
 

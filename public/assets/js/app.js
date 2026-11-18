@@ -1082,6 +1082,11 @@
           credentials: 'same-origin'
         });
         if (!res.ok) {
+          if (res.status === 401) {
+            var next = window.location.pathname + window.location.search;
+            window.location.href = '/login?next=' + encodeURIComponent(next);
+            return;
+          }
           var message = 'Nie udało się utworzyć kopii zapasowej.';
           try {
             var data = await res.json();
