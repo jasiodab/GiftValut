@@ -84,7 +84,7 @@ final class SettingsController extends Controller
         if (array_key_exists('currency', $input)) {
             $currency = strtoupper(trim((string) $input['currency']));
             if (!preg_match('/^[A-Z]{3}$/', $currency)) {
-                $validator->addError('currency', 'Wybierz poprawnÄ… walutÄ™.');
+                $validator->addError('currency', 'Wybierz poprawn¹ walutê.');
             } else {
                 $data['currency'] = $currency;
             }
@@ -92,7 +92,7 @@ final class SettingsController extends Controller
         if (array_key_exists('defaultProductView', $input)) {
             $view = (string) $input['defaultProductView'];
             if (!in_array($view, ['grid', 'list'], true)) {
-                $validator->addError('defaultProductView', 'Wybierz poprawny widok produktÃ³w.');
+                $validator->addError('defaultProductView', 'Wybierz poprawny widok produktów.');
             } else {
                 $data['defaultProductView'] = $view;
             }
