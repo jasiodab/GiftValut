@@ -57,7 +57,7 @@ final class RateLimitMiddleware
             }
             throw new HttpException(
                 429,
-                'Too many requests. Please try again later.',
+                'Zbyt wiele żądań. Spróbuj ponownie później.',
                 'RATE_LIMITED'
             );
         }

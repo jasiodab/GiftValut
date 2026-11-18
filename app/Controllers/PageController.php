@@ -317,9 +317,11 @@ final class PageController extends Controller
     public function meta(): Response
     {
         $user = AuthMiddleware::user($this->request);
-        $settingsRow = $this->settings->findForUser((string) $user['id']);
+        $userId = (string) $user['id'];
+        $settingsRow = $this->settings->ensureForUser($userId);
+
         return Response::json([
-            'productCount' => $this->products->countForUser((string) $user['id']),
+            'productCount' => $this->products->countForUser($userId),
             'status' => 'ok',
             'database' => 'connected',
             'frogMode' => (bool) App::config('app.frog_mode', false),
