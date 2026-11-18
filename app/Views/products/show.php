@@ -148,4 +148,3 @@ $meta = status_meta($p['status']);
       </div>
     </div>
   </div>
-</div>
