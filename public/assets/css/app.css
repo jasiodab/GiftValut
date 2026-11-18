@@ -263,14 +263,21 @@ a {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: var(--primary);
+  background: transparent;
   color: var(--primary-fg);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
-.brand-mark .icon {
-  width: 16px;
-  height: 16px;
+.brand-mark .icon,
+.brand-mark .brand-logo {
+  width: 100%;
+  height: 100%;
+}
+
+.brand-logo {
+  display: block;
+  object-fit: contain;
 }
 
 .brand-name {
@@ -536,13 +543,15 @@ a {
   width: 24px;
   height: 24px;
   border-radius: 7px;
-  background: var(--primary);
+  background: transparent;
   color: var(--primary-fg);
+  overflow: hidden;
 }
 
-.mobile-brand-mark .icon {
-  width: 14px;
-  height: 14px;
+.mobile-brand-mark .icon,
+.mobile-brand-mark .brand-logo {
+  width: 100%;
+  height: 100%;
 }
 
 .mobile-brand-name {
@@ -3177,17 +3186,19 @@ input[type="radio"] {
 .auth-brand-mark {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   margin-bottom: 6px;
   border-radius: 12px;
-  background: var(--primary);
+  background: transparent;
   color: var(--primary-fg);
+  overflow: hidden;
 }
 
-.auth-brand-mark .icon {
-  width: 21px;
-  height: 21px;
+.auth-brand-mark .icon,
+.auth-brand-mark .brand-logo {
+  width: 100%;
+  height: 100%;
 }
 
 .auth-brand h1 {

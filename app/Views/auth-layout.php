@@ -11,6 +11,7 @@
   <title><?= e($title) ?></title>
   <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
   <link rel="preload" href="<?= e(asset('fonts/inter-latin-wght-normal.woff2')) ?>" as="font" type="font/woff2" crossorigin>
+  <link rel="icon" href="<?= e(asset('images/logo.svg')) ?>" type="image/svg+xml">
   <script>
     (function () {
       try {
@@ -31,7 +32,7 @@
   </div>
   <div class="auth-shell">
     <div class="auth-brand">
-      <div class="auth-brand-mark"><?= icon('vault') ?></div>
+      <div class="auth-brand-mark"><img class="brand-logo" src="<?= e(asset('images/logo.svg')) ?>" alt="Logo Gift Vault"></div>
       <h1>Gift Vault</h1>
       <p>Twoja prywatna kolekcja prezentów</p>
     </div>

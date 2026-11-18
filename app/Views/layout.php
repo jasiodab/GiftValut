@@ -14,6 +14,7 @@ $user = $user ?? null;
   <title><?= e($title) ?></title>
   <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
   <link rel="preload" href="<?= e(asset('fonts/inter-latin-wght-normal.woff2')) ?>" as="font" type="font/woff2" crossorigin>
+  <link rel="icon" href="<?= e(asset('images/logo.svg')) ?>" type="image/svg+xml">
   <script>
     (function () {
       try {
@@ -32,7 +33,7 @@ $user = $user ?? null;
     <div class="sidebar-inner">
       <div class="sidebar-brand">
         <a class="brand-link" href="<?= e(url('/')) ?>">
-          <span class="brand-mark"><?= icon('vault') ?></span>
+          <span class="brand-mark"><img class="brand-logo" src="<?= e(asset('images/logo.svg')) ?>" alt="" aria-hidden="true"></span>
           <span class="brand-name">Gift Vault</span>
         </a>
         <button class="sidebar-close" type="button" id="sidebarClose" aria-label="Zamknij nawigację"><?= icon('x') ?></button>
@@ -89,7 +90,7 @@ $user = $user ?? null;
       <div class="mobile-header-left">
         <button class="mobile-menu-btn" type="button" id="mobileMenuBtn" aria-label="Otwórz nawigację"><?= icon('menu') ?></button>
         <a class="mobile-brand" href="<?= e(url('/')) ?>">
-          <span class="mobile-brand-mark"><?= icon('vault') ?></span>
+          <span class="mobile-brand-mark"><img class="brand-logo" src="<?= e(asset('images/logo.svg')) ?>" alt="" aria-hidden="true"></span>
           <span class="mobile-brand-name">Gift Vault</span>
         </a>
       </div>
