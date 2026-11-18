@@ -65,6 +65,8 @@
 
   --sidebar-width: 228px;
   --content-max: 1220px;
+  --image-max-width: 1400px;
+  --image-max-height: 900px;
   --ring: 0 0 0 3px rgba(233, 175, 197, 0.4);
 
   color-scheme: light;
