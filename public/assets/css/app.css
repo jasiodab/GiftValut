@@ -1300,6 +1300,7 @@ input[type="radio"] {
 .product-image img {
   width: 100%;
   height: 100%;
+  max-height: min(700px, var(--image-max-height));
   object-fit: cover;
   display: block;
 }
@@ -3783,25 +3784,5 @@ input[type="radio"] {
   width: 16px;
   height: 16px;
   display: block;
-}
-
-/* ==========================================================================
-   Obrazy — maksymalne wymiary (żadne zdjęcie nie wyjeżdża poza ekran)
-   ========================================================================== */
-
-img {
-  max-width: 100%;
-  height: auto;
-  max-height: 90vh;
-}
-
-/* Zdjęcia produktów w siatce — górny limit wysokości */
-.product-image img {
-  max-height: 700px;
-}
-
-/* Zdjęcie na stronie szczegółów produktu — ten sam górny limit */
-.detail-media .product-image img {
-  max-height: 700px;
 }
 
