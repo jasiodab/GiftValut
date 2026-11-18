@@ -40,7 +40,7 @@ final class SettingsController extends Controller
 
         $counts = [
             'products' => (new ProductRepository())->countForUser($userId),
-            'categories' => count((new CategoryRepository())->listForUser($userId)),
+            'categories' => (new CategoryRepository())->countForUser($userId),
             'stores' => (new StoreRepository())->countForUser($userId),
             'tags' => (new TagRepository())->countForUser($userId),
         ];

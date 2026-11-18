@@ -59,6 +59,11 @@ final class CategoryRepository
         );
     }
 
+    public function countForUser(string $userId): int
+    {
+        return (int) App::db()->value('SELECT COUNT(*) FROM "Category" WHERE userId = ?', [$userId]);
+    }
+
     public function maxSortOrder(string $userId): int
     {
         return (int) (App::db()->value('SELECT MAX(sortOrder) FROM "Category" WHERE userId = ?', [$userId]) ?? 0);

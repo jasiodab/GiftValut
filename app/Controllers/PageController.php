@@ -176,11 +176,17 @@ final class PageController extends Controller
         $userId = (string) $user['id'];
         $settingsRow = $this->settings->ensureForUser($userId);
 
+        $rows = $this->groups->listForUser($userId);
+        $priceSums = $this->products->sumPricesForGroups($userId, array_map(
+            static fn (array $row): string => (string) ($row['id'] ?? ''),
+            $rows
+        ));
+
         $groups = [];
-        foreach ($this->groups->listForUser($userId) as $row) {
+        foreach ($rows as $row) {
             $row['isOwner'] = (string) ($row['ownerId'] ?? '') === $userId;
             $group = $this->serializeGroupForView($row);
-            $group['priceSum'] = $this->products->sumPricesForGroup($userId, (string) $row['id']);
+            $group['priceSum'] = $priceSums[(string) ($row['id'] ?? '')] ?? 0.0;
             $groups[] = $group;
         }
 
@@ -226,7 +232,7 @@ final class PageController extends Controller
 
         $counts = [
             'products' => $this->products->countForUser($userId),
-            'categories' => count($this->categories->listForUser($userId)),
+            'categories' => $this->categories->countForUser($userId),
             'stores' => (new \App\Repositories\StoreRepository())->countForUser($userId),
             'tags' => $this->tags->countForUser($userId),
         ];

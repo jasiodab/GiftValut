@@ -210,6 +210,34 @@ final class ProductRepository
     }
 
     /**
+     * @param list<string> $groupIds
+     * @return array<string, float>
+     */
+    public function sumPricesForGroups(string $userId, array $groupIds): array
+    {
+        $ids = array_values(array_unique(array_filter($groupIds, static fn ($id) => is_string($id) && $id !== '')));
+        if ($ids === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $rows = App::db()->fetchAll(
+            'SELECT groupId, COALESCE(SUM(currentPrice), 0) AS total
+             FROM "Product"
+             WHERE userId = ? AND groupId IN (' . $placeholders . ')
+             GROUP BY groupId',
+            array_merge([$userId], $ids)
+        );
+        $sums = [];
+        foreach ($rows as $row) {
+            $groupId = (string) ($row['groupId'] ?? '');
+            if ($groupId !== '') {
+                $sums[$groupId] = (float) ($row['total'] ?? 0);
+            }
+        }
+        return $sums;
+    }
+
+    /**
      * @param list<array<string, mixed>> $rows
      * @return list<array<string, mixed>>
      */

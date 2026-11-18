@@ -9,9 +9,17 @@ use App\Core\Str;
 
 final class SettingsRepository
 {
+    /** @var array<string, array<string, mixed>|null> */
+    private static array $cache = [];
+
     public function findForUser(string $userId): ?array
     {
-        return App::db()->fetch('SELECT * FROM "Settings" WHERE userId = ? LIMIT 1', [$userId]);
+        if (array_key_exists($userId, self::$cache)) {
+            return self::$cache[$userId];
+        }
+        $settings = App::db()->fetch('SELECT * FROM "Settings" WHERE userId = ? LIMIT 1', [$userId]);
+        self::$cache[$userId] = $settings;
+        return $settings;
     }
 
     public function ensureForUser(string $userId): array
@@ -27,6 +35,7 @@ final class SettingsRepository
              VALUES (?, ?, ?, ?, ?, ?, ?)',
             [$userId, 'PLN', 0, 360, 'grid', $now, $now]
         );
+        unset(self::$cache[$userId]);
         return $this->findForUser($userId) ?? [];
     }
 
@@ -47,6 +56,7 @@ final class SettingsRepository
             $params[] = $userId;
             App::db()->execute('UPDATE "Settings" SET ' . implode(', ', $sets) . ' WHERE userId = ?', $params);
         }
+        unset(self::$cache[$userId]);
         return $this->findForUser($userId) ?? [];
     }
 
@@ -57,5 +67,6 @@ final class SettingsRepository
             'UPDATE "Settings" SET lastBackupAt = ?, updatedAt = ? WHERE userId = ?',
             [$timestampMs, Str::nowMs(), $userId]
         );
+        unset(self::$cache[$userId]);
     }
 }

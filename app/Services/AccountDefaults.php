@@ -37,17 +37,30 @@ final class AccountDefaults
     public static function ensure(string $userId): void
     {
         $database = App::db();
+
+        $hasSettings = $database->value('SELECT 1 FROM "Settings" WHERE userId = ? LIMIT 1', [$userId]) !== null;
+        $hasCategories = (int) $database->value('SELECT COUNT(*) FROM "Category" WHERE userId = ?', [$userId]) > 0;
+        if ($hasSettings && $hasCategories) {
+            return;
+        }
+
         $now = Str::nowMs();
 
-        $database->transaction(static function () use ($database, $userId, $now): void {
-            $settings = $database->value('SELECT id FROM "Settings" WHERE userId = ? LIMIT 1', [$userId]);
-            if ($settings === null) {
-                $database->run(
-                    'INSERT INTO "Settings" (userId, currency, autoTrackingEnabled, priceUpdateIntervalMinutes,
-                        defaultProductView, createdAt, updatedAt)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    [$userId, 'PLN', 0, 360, 'grid', $now, $now]
-                );
+        $database->transaction(static function () use ($database, $userId, $now, $hasSettings, $hasCategories): void {
+            if (!$hasSettings) {
+                $existingSettings = $database->value('SELECT 1 FROM "Settings" WHERE userId = ? LIMIT 1', [$userId]);
+                if ($existingSettings === null) {
+                    $database->run(
+                        'INSERT INTO "Settings" (userId, currency, autoTrackingEnabled, priceUpdateIntervalMinutes,
+                            defaultProductView, createdAt, updatedAt)
+                         VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        [$userId, 'PLN', 0, 360, 'grid', $now, $now]
+                    );
+                }
+            }
+
+            if ($hasCategories) {
+                return;
             }
 
             $categoryCount = (int) $database->value('SELECT COUNT(*) FROM "Category" WHERE userId = ?', [$userId]);
