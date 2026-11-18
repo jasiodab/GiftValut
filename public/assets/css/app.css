@@ -151,6 +151,12 @@ img, svg, video, canvas {
   max-width: 100%;
 }
 
+img {
+  max-width: min(100%, var(--image-max-width));
+  max-height: min(90vh, var(--image-max-height));
+  height: auto;
+}
+
 button, input, textarea, select {
   font: inherit;
   color: inherit;
