@@ -191,7 +191,7 @@ $total = (int) ($pagination['total'] ?? 0);
             <span class="status <?= e($meta['class']) ?>"><span class="dot"></span><?= e($meta['label']) ?></span>
           </div>
           <?php if ($p['url']): ?>
-            <a class="btn btn-outline btn-sm store-btn" href="<?= e($p['url']) ?>" target="_blank" rel="noopener noreferrer"><?= icon('arrow-up-right') ?> Otwórz w sklepie</a>
+            <a class="btn btn-outline btn-sm store-btn" href="<?= e($p['url']) ?>" target="_blank" rel="noopener noreferrer" aria-label="Otwórz w sklepie <?= e($p['store']['name'] ?? '') ?>"><?= icon('arrow-up-right') ?> Otwórz w sklepie</a>
           <?php endif; ?>
         </div>
       </article>
