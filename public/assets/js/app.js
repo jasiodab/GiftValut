@@ -74,16 +74,20 @@
       body = JSON.stringify(body);
     }
     var res = await fetch(path, Object.assign({}, options, { body: body, headers: headers, credentials: 'same-origin' }));
+    var text = '';
+    try { text = await res.text(); } catch (e) { text = ''; }
     var data = null;
-    var errorMessage = res.statusText;
-    try {
-      data = await res.json();
-      if (data && data.error && data.error.message) errorMessage = data.error.message;
-    } catch (e) {
-      try { errorMessage = await res.text(); } catch (e2) {}
+    if (text) {
+      try { data = JSON.parse(text); } catch (e) { data = null; }
     }
     if (!res.ok) {
-      var err = new Error(errorMessage || res.statusText);
+      if (res.status === 401 && path.indexOf('/api/auth/') !== 0) {
+        var next = window.location.pathname + window.location.search;
+        window.location.href = '/login?next=' + encodeURIComponent(next);
+        return new Promise(function () {});
+      }
+      var errorMessage = (data && data.error && data.error.message) || (text && !data ? text : '') || res.statusText || 'Wystąpił błąd.';
+      var err = new Error(errorMessage);
       err.code = data && data.error ? data.error.code : null;
       err.details = data && data.error ? data.error.details : null;
       err.status = res.status;
