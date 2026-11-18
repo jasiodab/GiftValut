@@ -111,7 +111,7 @@ final class Auth
     {
         $user = self::user();
         if ($user === null) {
-            throw new HttpException(401, 'Authentication required.', 'UNAUTHORIZED');
+            throw new HttpException(401, 'Wymagane logowanie.', 'UNAUTHORIZED');
         }
         return $user;
     }
@@ -120,7 +120,7 @@ final class Auth
     {
         $user = self::requireUser();
         if ($user['role'] !== 'OWNER') {
-            throw new HttpException(403, 'Owner access required.', 'FORBIDDEN');
+            throw new HttpException(403, 'Wymagane uprawnienia właściciela.', 'FORBIDDEN');
         }
         return $user;
     }
