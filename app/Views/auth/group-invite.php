@@ -17,7 +17,7 @@ $roleLabels = [
     </div>
   <?php elseif ($alreadyMember): ?>
     <div class="auth-error">
-      <?= icon('alert-circle') ?>
+      <?= icon('circle-alert') ?>
       <span>Jesteś już członkiem grupy „<?= e($group['name']) ?>”.</span>
     </div>
     <div class="auth-actions mt-3">
