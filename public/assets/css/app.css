@@ -3781,3 +3781,8 @@ img {
   max-height: 700px;
 }
 
+/* Zdjęcie na stronie szczegółów produktu — ten sam górny limit */
+.detail-media .product-image img {
+  max-height: 700px;
+}
+
