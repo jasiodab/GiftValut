@@ -39,7 +39,7 @@ final class UrlSafety
             throw new HttpException(400, 'Obsługiwane są tylko linki HTTP i HTTPS.', 'INVALID_PROTOCOL');
         }
         if (isset($parts['user']) || isset($parts['pass'])) {
-            throw new HttpException(400, 'URLs containing credentials are not supported.', 'INVALID_URL');
+            throw new HttpException(400, 'Adresy URL zawierające dane logowania nie są obsługiwane.', 'INVALID_URL');
         }
 
         $host = strtolower((string) $parts['host']);
